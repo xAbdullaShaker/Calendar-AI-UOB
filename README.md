@@ -1,104 +1,54 @@
-# Calendar AI — UOB (University of Business)
+# Calendar AI — UOB
 
-An AI chatbot that answers questions about the UOB academic calendar. Designed to be fast and cost-efficient by answering most questions from a local FAQ, and only falling back to an LLM for unusual questions.
-
----
-
-## What This Project Does
-
-- Converts the UOB academic calendar PDF into AI-readable formats
-- Provides a structured FAQ in JSON for instant answers
-- Uses **semantic embeddings** so the bot understands meaning — not just exact words
-- Answers in both **Arabic and English**
-- Restricts the AI to only answer from the calendar data
+A hybrid FAQ chatbot for the UOB academic calendar. Answers in Arabic and English. Uses embeddings for smart matching — the LLM is only a fallback, not the default.
 
 ---
 
-## Files in This Repo
+## How It Works
 
-| File | Purpose |
-|------|---------|
-| `uob_calendar.md` | Clean Markdown tables of all academic dates (semesters, holidays, exams) |
-| `uob_calendar.json` | Same data in structured JSON — bilingual (English + Arabic labels) |
-| `uob_faq.json` | FAQ with multiple question phrasings per answer (Arabic + English) |
-| `uob_ai_system_prompt.md` | Ready-to-use system prompt that restricts the AI to calendar data only |
-| `docs/architecture.md` | How the system works (FAQ matching, embeddings, LLM fallback) |
+```
+User asks a question
+        ↓
+Convert question to embedding (vector)
+        ↓
+Compare with FAQ question embeddings
+        ↓
+   ┌────┴────────┐
+Match > 75%?   No match?
+   │               │
+   ✅              ❌
+   │               │
+Return          Call LLM
+pre-written     with calendar
+answer          as context
+(NO LLM)
+```
+
+**~95% of questions never reach the LLM.** The FAQ + embeddings handle them instantly for free.
 
 ---
 
-## Architecture
+## Why Not Pure RAG?
 
-### The Problem
-Users ask the same question in many different ways:
-- "When does spring start?"
-- "First day of second semester?"
-- "متى تبدأ الدراسة؟"
+| | Pure RAG | This Project |
+|---|---|---|
+| Every question uses LLM | ✅ Yes | ❌ No — FAQ first |
+| LLM only for edge cases | ❌ No | ✅ Yes |
+| Same question = same answer | ❌ LLM may rephrase | ✅ Always identical |
+| Hallucination risk on dates | ⚠️ Yes | ✅ No (pre-written) |
+| Cost per common question | 💸 ~$0.001 | 💰 $0.00 |
 
-A simple keyword match fails for synonyms and different languages.
-
-### The Solution: 3-Layer Approach
-
-```
-User Question
-      ↓
-Layer 1: Exact / Keyword Match  →  Answer (FREE, instant, ~0ms)
-      ↓ no match
-Layer 2: Semantic Embedding Match  →  Answer (near-free, ~50ms)
-      ↓ similarity < 75%
-Layer 3: LLM with calendar context  →  Answer (costs tokens)
-```
-
-Layer 1 and 2 handle ~90% of questions. The LLM is only called for edge cases.
+A calendar has **fixed, factual answers**. Pre-writing them is safer and cheaper than generating them every time.
 
 ---
 
-## How Embeddings Work
+## The Two Things You Prepare
 
-An **embedding** converts a sentence into an array of ~1536 numbers that represent its *meaning*.
-
-Sentences with similar meanings produce similar numbers — even across languages.
-
-```
-"When do classes start?"       → [0.023, -0.451, 0.782, ...]
-"متى تبدأ الدراسة؟"            → [0.021, -0.449, 0.779, ...]  ← very close!
-"When is my first day at uni?" → [0.025, -0.447, 0.780, ...]  ← also close
-```
-
-### Two-Step Process
-
-**Step 1 — Setup (runs once):**
-```
-Read uob_faq.json
-    ↓
-Send each question to embedding API (OpenAI / Cohere)
-    ↓
-Get back a vector (array of numbers)
-    ↓
-Save to faq_embeddings.json
-```
-
-**Step 2 — Runtime (every user message):**
-```
-User's question
-    ↓
-Convert to vector
-    ↓
-Compare (cosine similarity) against all saved vectors
-    ↓
-If best match > 75% → return FAQ answer (FREE)
-If below 75%        → fallback to LLM
-```
-
----
-
-## FAQ Data Format
-
-Each FAQ entry in `uob_faq.json` has:
-
+**1. `uob_faq.json` — pre-written answers**
+Each entry has multiple phrasings (Arabic + English) and a fixed answer:
 ```json
 {
   "id": "fall_start",
-  "tags": ["semester", "start"],
   "questions": [
     "when does the first semester start",
     "first day of fall semester",
@@ -110,69 +60,67 @@ Each FAQ entry in `uob_faq.json` has:
 }
 ```
 
-Multiple question phrasings per entry = better matching without needing the LLM.
+**2. `uob_calendar.md` — full calendar data**
+Fed to the LLM only when no FAQ match is found.
 
 ---
 
-## Embedding Tools (Recommended)
+## What Embeddings Do
 
-| Tool | Cost | Arabic Support | Notes |
-|------|------|---------------|-------|
-| OpenAI `text-embedding-3-small` | ~$0.02 / 1M tokens | Excellent | Easiest setup |
-| Cohere `embed-multilingual` | Free tier available | Excellent | Best for Arabic specifically |
-| Sentence Transformers (local) | FREE | Good | Runs on your server, no API needed |
-
-For ~26 FAQ entries, converting all questions costs **less than $0.001 total**.
-
----
-
-## How to Use the System Prompt
-
-The file `uob_ai_system_prompt.md` is a ready-to-use prompt that:
-- Restricts the AI to only answer from the calendar data
-- Handles both Arabic and English
-- Refuses off-topic questions
-- Notes that moon-sighting-dependent holidays may shift by a day (marked with `*`)
-
-### Quickest Setup (Claude Projects / ChatGPT GPTs)
-1. Create a new Project or GPT
-2. Paste the system prompt as the instructions
-3. Upload `uob_calendar.md` as the knowledge file
-
-### Via API
-```python
-response = client.messages.create(
-    model="claude-sonnet-4-6",
-    system=open("uob_ai_system_prompt.md").read() + "\n\n" + open("uob_calendar.md").read(),
-    messages=[{"role": "user", "content": user_question}]
-)
-```
-
----
-
-## Decision Guide: Which Data Format to Use?
-
-| Use Case | Best Format |
-|----------|------------|
-| Chat-only AI (your case) | `uob_calendar.md` — LLMs read Markdown tables very well |
-| App with filters/search | `uob_calendar.json` — programmatic queries |
-| FAQ matching bot | `uob_faq.json` + embeddings |
-| All of the above | JSON as source of truth, generate Markdown from it |
-
----
-
-## Notes on Dates
-
-Dates marked with `*` are **Hijri-based** and depend on moon sighting. They may shift by ±1 day. The system prompt already instructs the AI to mention this when relevant.
-
----
-
-## Tech Stack Suggestion
+An embedding converts a sentence into numbers that represent its **meaning** — not its words.
 
 ```
-Frontend:   Any chat UI (web, mobile, WhatsApp bot)
-Matching:   Python (rapidfuzz) or JS (fuse.js) for keyword match
-Embeddings: OpenAI or Cohere API
-Fallback:   Claude API (Anthropic) with uob_calendar.md as context
-Storage:    faq_embeddings.json (flat file, no DB needed at this scale)
+"When do classes start?"       → [0.023, -0.451, 0.782, ...]
+"متى تبدأ الدراسة؟"            → [0.021, -0.449, 0.779, ...]  ← nearly identical
+"When is my first day at uni?" → [0.025, -0.447, 0.780, ...]  ← also close
+```
+
+This means Arabic and English questions match each other automatically.
+
+**Setup (once):** Convert all FAQ questions to vectors → save to `faq_embeddings.json`
+**Runtime:** Convert user question → compare → return closest answer if similarity > 75%
+
+---
+
+## Real Examples
+
+| User asks | Similarity | LLM used? |
+|-----------|-----------|-----------|
+| "When does the first semester start?" | 94% | No |
+| "متى أول يوم دراسة؟" | 87% | No |
+| "If I defer, can I still transfer programs in June?" | 42% | Yes |
+
+---
+
+## Embedding Tools
+
+| Tool | Cost | Arabic |
+|------|------|--------|
+| OpenAI `text-embedding-3-small` | ~$0.02 / 1M tokens | Excellent |
+| Cohere `embed-multilingual` | Free tier | Excellent |
+| Sentence Transformers (local) | Free | Good |
+
+Converting all 26 FAQ entries costs **less than $0.001 total**.
+
+---
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `uob_faq.json` | FAQ with Arabic + English phrasings and pre-written answers |
+| `uob_calendar.md` | Full academic calendar in Markdown — fed to LLM as context |
+| `uob_calendar.json` | Same calendar in structured JSON |
+| `uob_ai_system_prompt.md` | System prompt restricting AI to calendar data only |
+| `docs/architecture.md` | Full technical architecture detail |
+
+---
+
+## Tech Stack
+
+```
+Embeddings:  OpenAI text-embedding-3-small  or  Cohere embed-multilingual
+Matching:    Cosine similarity on flat JSON (no DB needed at this scale)
+LLM:         Claude (claude-sonnet-4-6) with uob_calendar.md as context
+Language:    Detected by Arabic Unicode range check
 ```
