@@ -37,7 +37,7 @@ for entry in faq:
         "answer_en": entry["answer_en"],
         "answer_ar": entry["answer_ar"],
     })
-    print(f"  ✓ {entry['id']}")
+    print(f"  OK {entry['id']}")
 
 with open("faq_embeddings.json", "w", encoding="utf-8") as f:
     json.dump({"faqs": results}, f, ensure_ascii=False, indent=2)

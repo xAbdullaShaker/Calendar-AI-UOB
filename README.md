@@ -1,30 +1,103 @@
 # Calendar AI — UOB
 
-A hybrid FAQ chatbot for the UOB academic calendar. Answers in Arabic and English. Uses embeddings for smart matching — the LLM is only a fallback, not the default.
+A hybrid FAQ chatbot for the University of Bahrain academic calendar 2025/2026.
+Answers in Arabic and English. Uses semantic embeddings for smart matching — the LLM is only a fallback, not the default.
 
 ---
 
 ## How It Works
 
 ```
-User asks a question
-        ↓
-Convert question to embedding (vector)
-        ↓
-Compare with FAQ question embeddings
-        ↓
-   ┌────┴────────┐
-Match > 75%?   No match?
-   │               │
-   ✅              ❌
-   │               │
-Return          Call LLM
-pre-written     with calendar
-answer          as context
-(NO LLM)
-```
+┌─────────────────────────────────────────────────────────────────┐
+│                        SETUP (runs once)                        │
+│                                                                 │
+│  uob_faq.json                                                   │
+│  (37 Q&A entries)  ──→  embed_faq.py  ──→  Cohere Embed API    │
+│                                                  │              │
+│                                                  ↓              │
+│                                        faq_embeddings.json      │
+│                                        (37 entries as vectors)  │
+└─────────────────────────────────────────────────────────────────┘
 
-**~95% of questions never reach the LLM.** The FAQ + embeddings handle them instantly for free.
+                              │
+                              │ app starts
+                              ↓
+
+┌─────────────────────────────────────────────────────────────────┐
+│                       RUNTIME (chat.py)                         │
+│                                                                 │
+│  1. Load faq_embeddings.json into memory                        │
+│  2. Load uob_calendar.md into memory                            │
+│                                                                 │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │
+                               ↓
+
+                     User types a question
+                    "when is registration?"
+                               │
+                               ↓
+                  ┌────────────────────────┐
+                  │  Detect language       │
+                  │  Arabic chars? → AR    │
+                  │  Otherwise    → EN     │
+                  └────────────┬───────────┘
+                               │
+                               ↓
+                  ┌────────────────────────┐
+                  │  Send question to      │
+                  │  Cohere Embed API      │
+                  │                        │
+                  │  "when is registration"│
+                  │        ↓               │
+                  │  [0.023, -0.45, ...]   │
+                  └────────────┬───────────┘
+                               │
+                               ↓
+                  ┌────────────────────────┐
+                  │  Compare against all   │
+                  │  37 FAQ vectors        │
+                  │  (cosine similarity)   │
+                  │                        │
+                  │  fall_start:    0.51   │
+                  │  fall_drop_add: 0.81 ← │ best match
+                  │  fall_finals:   0.43   │
+                  │  ...                   │
+                  └────────────┬───────────┘
+                               │
+                    ┌──────────┴──────────┐
+                    │                     │
+              score >= 0.65         score < 0.65
+                    │                     │
+                    ↓                     ↓
+        ┌───────────────────┐   ┌──────────────────────┐
+        │  Return pre-      │   │  Send to Cohere LLM  │
+        │  written answer   │   │  (command-a-03-2025) │
+        │  from FAQ         │   │                      │
+        │                   │   │  context:            │
+        │  AR → answer_ar   │   │  uob_calendar.md     │
+        │  EN → answer_en   │   │  + user question     │
+        └─────────┬─────────┘   └──────────┬───────────┘
+                  │                         │
+                  │                         ↓
+                  │             ┌───────────────────────┐
+                  │             │  LLM reads calendar   │
+                  │             │  generates answer     │
+                  │             │  in user's language   │
+                  │             └──────────┬────────────┘
+                  │                        │
+                  └───────────┬────────────┘
+                              │
+                              ↓
+                  ┌───────────────────────┐
+                  │   Bot replies to      │
+                  │   user               │
+                  │                      │
+                  │  + shows source:     │
+                  │  [FAQ match: 81%]    │
+                  │  [LLM fallback: 51%] │
+                  └───────────────────────┘
+```
 
 ---
 
@@ -32,36 +105,13 @@ answer          as context
 
 | | Pure RAG | This Project |
 |---|---|---|
-| Every question uses LLM | ✅ Yes | ❌ No — FAQ first |
-| LLM only for edge cases | ❌ No | ✅ Yes |
-| Same question = same answer | ❌ LLM may rephrase | ✅ Always identical |
-| Hallucination risk on dates | ⚠️ Yes | ✅ No (pre-written) |
-| Cost per common question | 💸 ~$0.001 | 💰 $0.00 |
+| Every question uses LLM | Yes | No — FAQ first |
+| LLM only for edge cases | No | Yes |
+| Same question = same answer | LLM may rephrase | Always identical |
+| Hallucination risk on dates | Yes | No (pre-written) |
+| Cost per common question | ~$0.001 | $0.00 |
 
 A calendar has **fixed, factual answers**. Pre-writing them is safer and cheaper than generating them every time.
-
----
-
-## The Two Things You Prepare
-
-**1. `uob_faq.json` — pre-written answers**
-Each entry has multiple phrasings (Arabic + English) and a fixed answer:
-```json
-{
-  "id": "fall_start",
-  "questions": [
-    "when does the first semester start",
-    "first day of fall semester",
-    "متى يبدأ الفصل الأول",
-    "أول يوم دراسة"
-  ],
-  "answer_en": "Classes begin Sunday, 7 September 2025.",
-  "answer_ar": "تبدأ الدراسة يوم الأحد 7 سبتمبر 2025."
-}
-```
-
-**2. `uob_calendar.md` — full calendar data**
-Fed to the LLM only when no FAQ match is found.
 
 ---
 
@@ -70,57 +120,56 @@ Fed to the LLM only when no FAQ match is found.
 An embedding converts a sentence into numbers that represent its **meaning** — not its words.
 
 ```
-"When do classes start?"       → [0.023, -0.451, 0.782, ...]
-"متى تبدأ الدراسة؟"            → [0.021, -0.449, 0.779, ...]  ← nearly identical
-"When is my first day at uni?" → [0.025, -0.447, 0.780, ...]  ← also close
+"When do classes start?"       -> [0.023, -0.451, 0.782, ...]
+"When is my first day at uni?" -> [0.025, -0.447, 0.780, ...]  <- close
+"متى تبدأ الدراسة؟"            -> [0.021, -0.449, 0.779, ...]  <- also close
 ```
 
-This means Arabic and English questions match each other automatically.
-
-**Setup (once):** Convert all FAQ questions to vectors → save to `faq_embeddings.json`
-**Runtime:** Convert user question → compare → return closest answer if similarity > 75%
-
----
-
-## Real Examples
-
-| User asks | Similarity | LLM used? |
-|-----------|-----------|-----------|
-| "When does the first semester start?" | 94% | No |
-| "متى أول يوم دراسة؟" | 87% | No |
-| "If I defer, can I still transfer programs in June?" | 42% | Yes |
-
----
-
-## Embedding Tools
-
-| Tool | Cost | Arabic |
-|------|------|--------|
-| OpenAI `text-embedding-3-small` | ~$0.02 / 1M tokens | Excellent |
-| Cohere `embed-multilingual` | Free tier | Excellent |
-| Sentence Transformers (local) | Free | Good |
-
-Converting all 26 FAQ entries costs **less than $0.001 total**.
+Arabic and English questions match each other automatically — no translation needed.
 
 ---
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `uob_faq.json` | FAQ with Arabic + English phrasings and pre-written answers |
-| `uob_calendar.md` | Full academic calendar in Markdown — fed to LLM as context |
-| `uob_calendar.json` | Same calendar in structured JSON |
-| `uob_ai_system_prompt.md` | System prompt restricting AI to calendar data only |
+| File | What it does |
+|------|-------------|
+| `uob_faq.json` | 37 Q&A entries with Arabic + English phrasings and pre-written answers |
+| `uob_calendar.md` | Full academic calendar — fed to LLM as context when FAQ has no match |
+| `embed_faq.py` | Converts FAQ questions to vectors via Cohere — run once |
+| `chat.py` | The bot — handles user input, matching, FAQ reply or LLM fallback |
+| `faq_embeddings.json` | Generated by embed_faq.py — stores all vectors locally |
+| `requirements.txt` | Python dependencies |
+| `.env` | Your Cohere API key — never pushed to GitHub |
+| `.env.example` | Empty template for the .env file |
 | `docs/architecture.md` | Full technical architecture detail |
+
+---
+
+## Setup
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Add your Cohere API key
+cp .env.example .env
+# edit .env and paste your key
+
+# 3. Convert FAQ to embeddings (once)
+python embed_faq.py
+
+# 4. Start chatting
+python chat.py
+```
 
 ---
 
 ## Tech Stack
 
 ```
-Embeddings:  OpenAI text-embedding-3-small  or  Cohere embed-multilingual
-Matching:    Cosine similarity on flat JSON (no DB needed at this scale)
-LLM:         Claude (claude-sonnet-4-6) with uob_calendar.md as context
+Embeddings:  Cohere embed-multilingual-v3.0
+LLM:         Cohere command-a-03-2025
+Matching:    Cosine similarity on flat JSON
 Language:    Detected by Arabic Unicode range check
+Storage:     Flat JSON files — no database needed
 ```

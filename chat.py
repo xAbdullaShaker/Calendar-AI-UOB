@@ -16,7 +16,7 @@ load_dotenv()
 
 co = cohere.Client(os.getenv("COHERE_API_KEY"))
 
-SIMILARITY_THRESHOLD = 0.75
+SIMILARITY_THRESHOLD = 0.65
 
 
 def load_embeddings():
@@ -71,7 +71,7 @@ CALENDAR DATA:
 {calendar_context}"""
 
     response = co.chat(
-        model="command-r-plus",
+        model="command-a-03-2025",
         message=question,
         preamble=system,
     )
