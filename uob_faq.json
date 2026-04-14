@@ -11,7 +11,10 @@
       "tags": ["greeting"],
       "questions": [
         "hi", "hello", "hey", "good morning", "good evening", "salam", "greetings",
-        "مرحبا", "السلام عليكم", "هلا", "أهلا", "صباح الخير", "مساء الخير"
+        "hi there", "hello there", "hey there", "howdy", "sup", "what's up",
+        "good afternoon", "morning", "evening", "yo", "hiya",
+        "مرحبا", "السلام عليكم", "هلا", "أهلا", "صباح الخير", "مساء الخير",
+        "هلا والله", "أهلين", "هاي", "مرحبتين", "سلام", "هلو", "ايش لونك"
       ],
       "answer_en": "Hello! I'm the UOB Calendar AI. Ask me anything about the University of Bahrain academic calendar 2025/2026.",
       "answer_ar": "أهلاً! أنا مساعد تقويم جامعة البحرين. اسألني عن أي موعد أو حدث في العام الأكاديمي 2025/2026."
@@ -30,12 +33,33 @@
         "when does school start",
         "first day of university",
         "when does college start",
+        "when do we go back to uni",
+        "when do classes begin",
+        "start of semester",
+        "when is first day of classes",
+        "when is school back",
+        "when does term start",
+        "first day back at uni",
+        "when is the semester starting",
+        "uni start date",
+        "college start date",
+        "classes start when",
+        "when school start",
+        "when uni starts",
+        "what date does uni start",
         "متى يبدأ الفصل الأول",
         "متى تبدأ الدراسة",
         "متى أول يوم دراسي",
         "بداية الفصل الأول",
         "متى تبدأ الجامعة",
-        "أول يوم جامعة"
+        "أول يوم جامعة",
+        "امتى تبدأ الدراسة",
+        "متى يبدأ الدوام",
+        "وش مواعيد الدراسة",
+        "متى نرجع الجامعة",
+        "بداية الدراسة امتى",
+        "الفصل الأول امتى يبدأ",
+        "متى اليوم الأول"
       ],
       "answer_en": "Classes for the First Semester begin on Sunday, 7 September 2025 for undergraduates, and Sunday, 14 September 2025 for graduate studies.",
       "answer_ar": "تبدأ الدراسة للفصل الأول يوم الأحد 7 سبتمبر 2025 للمرحلة الجامعية الأولى، ويوم الأحد 14 سبتمبر 2025 للدراسات العليا."
@@ -49,10 +73,21 @@
         "second semester start date",
         "when do classes resume",
         "when does second semester begin",
+        "spring semester start date",
+        "when is second semester",
+        "when do we start second semester",
+        "second term start date",
+        "when does spring term begin",
+        "when is the second semester starting",
+        "spring classes start when",
         "متى يبدأ الفصل الثاني",
         "متى تبدأ دراسة الفصل الثاني",
         "بداية الفصل الثاني",
-        "متى الفصل الثاني"
+        "متى الفصل الثاني",
+        "الفصل الثاني امتى يبدأ",
+        "امتى الفصل الثاني",
+        "متى نرجع بعد الإجازة",
+        "متى تبدأ دراسة الربيع"
       ],
       "answer_en": "Classes for the Second Semester begin on Tuesday, 3 February 2026 for both undergraduate and graduate students.",
       "answer_ar": "تبدأ الدراسة للفصل الثاني يوم الثلاثاء 3 فبراير 2026 للمرحلة الجامعية الأولى والدراسات العليا."
@@ -65,9 +100,20 @@
         "when does summer session begin",
         "summer semester date",
         "when does summer school start",
+        "summer classes start when",
+        "when is summer semester",
+        "is there a summer semester",
+        "summer term start",
+        "when does summer term begin",
+        "do you have summer classes",
+        "summer school start date",
         "متى يبدأ الفصل الصيفي",
         "متى تبدأ الدراسة الصيفية",
-        "الفصل الصيفي متى"
+        "الفصل الصيفي امتى",
+        "امتى الصيفي",
+        "متى يبدأ الصيفي",
+        "في فصل صيفي",
+        "الدراسة الصيفية امتى تبدأ"
       ],
       "answer_en": "Summer session classes begin on Wednesday, 1 July 2026.",
       "answer_ar": "تبدأ الدراسة في الفصل الصيفي يوم الأربعاء 1 يوليو 2026."
@@ -80,9 +126,19 @@
         "last day of first semester",
         "when do classes end fall",
         "when does fall semester finish",
+        "end of first semester",
+        "when does the semester end",
+        "last day of classes first semester",
+        "when is the last day of school",
+        "when do classes stop",
+        "when does term end",
+        "first semester end date",
         "متى ينتهي الفصل الأول",
         "آخر يوم في الفصل الأول",
-        "نهاية الفصل الأول"
+        "نهاية الفصل الأول",
+        "امتى ينتهي الفصل الأول",
+        "آخر يوم دراسة الفصل الأول",
+        "متى تنتهي المحاضرات"
       ],
       "answer_en": "The last day of classes for the First Semester is Thursday, 18 December 2025.",
       "answer_ar": "آخر يوم للدراسة في الفصل الأول هو الخميس 18 ديسمبر 2025."
@@ -94,9 +150,15 @@
         "when does second semester end",
         "last day of second semester",
         "when do spring classes end",
+        "end of second semester",
+        "last day of spring semester",
+        "when does spring term end",
+        "second semester end date",
         "متى ينتهي الفصل الثاني",
         "آخر يوم في الفصل الثاني",
-        "نهاية الفصل الثاني"
+        "نهاية الفصل الثاني",
+        "امتى ينتهي الفصل الثاني",
+        "آخر يوم دراسة الفصل الثاني"
       ],
       "answer_en": "The last day of classes for the Second Semester is Thursday, 21 May 2026.",
       "answer_ar": "آخر يوم للدراسة في الفصل الثاني هو الخميس 21 مايو 2026."
@@ -111,10 +173,23 @@
         "when are finals for fall",
         "exam dates first semester",
         "when do finals start",
+        "finals schedule",
+        "when are exams",
+        "exam period fall",
+        "when are my exams",
+        "final exam dates",
+        "when is exam week",
+        "first semester exam dates",
+        "when do final exams begin",
         "متى الامتحانات النهائية",
         "متى امتحانات الفصل الأول",
         "موعد الامتحانات النهائية",
-        "امتحانات نهاية الفصل الأول"
+        "امتحانات نهاية الفصل الأول",
+        "امتى الامتحانات",
+        "موعد الامتحانات",
+        "الامتحانات النهائية امتى",
+        "متى امتحاناتي",
+        "امتحانات الفصل الأول امتى"
       ],
       "answer_en": "First Semester final exams run from Saturday, 20 December 2025 to Monday, 29 December 2025.",
       "answer_ar": "فترة الامتحانات النهائية للفصل الأول من السبت 20 ديسمبر 2025 إلى الاثنين 29 ديسمبر 2025."
@@ -127,9 +202,15 @@
         "when are second semester final exams",
         "spring finals dates",
         "exam dates second semester",
+        "second semester exam period",
+        "when are spring exams",
+        "spring exam schedule",
+        "finals week spring",
         "متى امتحانات الفصل الثاني",
         "امتحانات نهاية الفصل الثاني",
-        "موعد امتحانات الفصل الثاني"
+        "موعد امتحانات الفصل الثاني",
+        "امتى امتحانات الفصل الثاني",
+        "الامتحانات النهائية للفصل الثاني"
       ],
       "answer_en": "Second Semester final exams run from Monday, 1 June 2026 to Wednesday, 10 June 2026.",
       "answer_ar": "فترة الامتحانات النهائية للفصل الثاني من الاثنين 1 يونيو 2026 إلى الأربعاء 10 يونيو 2026."
@@ -141,8 +222,12 @@
         "when are summer finals",
         "summer final exams",
         "exam dates summer",
+        "summer exam period",
+        "when are summer exams",
         "امتحانات الصيفي",
-        "متى امتحانات الفصل الصيفي"
+        "متى امتحانات الفصل الصيفي",
+        "امتحانات الصيف امتى",
+        "موعد امتحانات الصيفي"
       ],
       "answer_en": "Summer final exams run from Saturday, 15 August 2026 to Tuesday, 18 August 2026.",
       "answer_ar": "فترة الامتحانات النهائية للفصل الصيفي من السبت 15 أغسطس إلى الثلاثاء 18 أغسطس 2026."
@@ -160,12 +245,26 @@
         "when can i register",
         "registration dates",
         "when do i register for courses",
+        "when is course registration",
+        "how do i add a course",
+        "can i still add courses",
+        "registration deadline",
+        "when does registration open",
+        "when can i change my courses",
+        "add drop deadline",
+        "course selection period",
+        "when do i pick my classes",
         "فترة الحذف والإضافة",
         "متى أسجل مقررات",
         "فترة التسجيل",
         "متى التسجيل للطلاب الجدد",
         "تسجيل الطلاب الجدد",
-        "موعد التسجيل"
+        "موعد التسجيل",
+        "امتى أسجل",
+        "متى يبدأ التسجيل",
+        "كيف أسجل مواد",
+        "فترة إضافة المواد",
+        "متى أقدر أسجل مقررات"
       ],
       "answer_en": "Registration, Drop and Add period for the First Semester runs from Wednesday, 3 September to Thursday, 11 September 2025.",
       "answer_ar": "فترة التسجيل والحذف والإضافة للفصل الأول من الأربعاء 3 سبتمبر إلى الخميس 11 سبتمبر 2025."
@@ -177,9 +276,14 @@
         "spring drop add period",
         "second semester registration",
         "when can i register for spring",
+        "registration for second semester",
+        "drop add second semester",
+        "spring registration dates",
         "فترة التسجيل للفصل الثاني",
         "الحذف والإضافة الفصل الثاني",
-        "متى تسجيل الفصل الثاني"
+        "متى تسجيل الفصل الثاني",
+        "امتى أسجل للفصل الثاني",
+        "موعد تسجيل الفصل الثاني"
       ],
       "answer_en": "Registration, Drop and Add for the Second Semester runs from Sunday, 1 February to Thursday, 12 February 2026.",
       "answer_ar": "فترة التسجيل والحذف والإضافة للفصل الثاني من الأحد 1 فبراير إلى الخميس 12 فبراير 2026."
@@ -193,10 +297,19 @@
         "drop course with w",
         "how to withdraw from a class",
         "withdrawal deadline first semester",
+        "when is the last day to withdraw",
+        "can i still withdraw",
+        "how do i drop a class",
+        "withdrawal with w grade",
+        "when can i drop without failing",
         "فترة الانسحاب",
         "متى أنسحب من مقرر",
         "الانسحاب من مادة",
-        "آخر موعد انسحاب"
+        "آخر موعد انسحاب",
+        "كيف أنسحب من مادة",
+        "امتى أقدر أنسحب",
+        "الانسحاب بدرجة W",
+        "متى آخر موعد للانسحاب"
       ],
       "answer_en": "Withdrawal with a W grade in the First Semester is allowed from Sunday, 28 September to Thursday, 13 November 2025.",
       "answer_ar": "فترة الانسحاب بدرجة W في الفصل الأول من الأحد 28 سبتمبر إلى الخميس 13 نوفمبر 2025."
@@ -208,8 +321,12 @@
         "spring withdrawal period",
         "withdraw with w second semester",
         "withdrawal deadline second semester",
+        "when can i withdraw spring",
+        "drop class second semester",
         "فترة الانسحاب الفصل الثاني",
-        "انسحاب الفصل الثاني"
+        "انسحاب الفصل الثاني",
+        "متى أنسحب في الفصل الثاني",
+        "آخر موعد انسحاب الفصل الثاني"
       ],
       "answer_en": "Withdrawal with a W grade in the Second Semester runs from Wednesday, 18 February to Tuesday, 7 April 2026.",
       "answer_ar": "فترة الانسحاب بدرجة W في الفصل الثاني من الأربعاء 18 فبراير إلى الثلاثاء 7 أبريل 2026."
@@ -223,10 +340,19 @@
         "when are results announced",
         "when can i see my grades",
         "grade release date fall",
+        "when will i know my results",
+        "results announcement date",
+        "when are grades posted",
+        "when do i get my grades",
+        "first semester grades release",
         "متى تظهر النتائج",
         "إعلان النتائج الفصل الأول",
         "متى أعرف نتيجتي",
-        "نتائج الفصل الأول"
+        "نتائج الفصل الأول",
+        "امتى تطلع النتائج",
+        "متى تعلن النتائج",
+        "نتيجتي امتى تطلع",
+        "متى تظهر درجاتي"
       ],
       "answer_en": "Final results for the First Semester are announced on Sunday, 4 January 2026.",
       "answer_ar": "تُعلن نتائج الفصل الأول يوم الأحد 4 يناير 2026."
@@ -238,9 +364,13 @@
         "second semester results date",
         "spring grades announcement",
         "when are spring results out",
+        "when do second semester grades come out",
+        "spring results date",
         "نتائج الفصل الثاني",
         "متى نتائج الفصل الثاني",
-        "إعلان نتائج الفصل الثاني"
+        "إعلان نتائج الفصل الثاني",
+        "امتى نتائج الفصل الثاني",
+        "متى تطلع نتائج الفصل الثاني"
       ],
       "answer_en": "Final results for the Second Semester are announced on Monday, 15 June 2026.",
       "answer_ar": "تُعلن نتائج الفصل الثاني يوم الاثنين 15 يونيو 2026."
@@ -251,8 +381,12 @@
       "questions": [
         "summer results date",
         "when are summer grades out",
+        "summer session results",
+        "when do summer grades come out",
         "نتائج الفصل الصيفي",
-        "متى نتائج الصيفي"
+        "متى نتائج الصيفي",
+        "امتى تطلع نتائج الصيفي",
+        "نتائج الصيف امتى"
       ],
       "answer_en": "Summer session final results are announced on Thursday, 20 August 2026.",
       "answer_ar": "تُعلن نتائج الفصل الصيفي يوم الخميس 20 أغسطس 2026."
@@ -265,12 +399,19 @@
         "national day holiday",
         "bahrain national day",
         "accession day holiday",
+        "national day break",
+        "is there a holiday for national day",
+        "when is the national day holiday",
+        "december holiday",
         "إجازة العيد الوطني",
         "متى العيد الوطني",
         "عيد الجلوس",
-        "إجازة عيد الجلوس"
+        "إجازة عيد الجلوس",
+        "العيد الوطني امتى",
+        "امتى إجازة العيد الوطني",
+        "إجازة ديسمبر"
       ],
-      "answer_en": "National Day and Accession Day holiday: Tuesday, 16 December and Wednesday, 17 December 2025. University celebrations take place on 14–15 December.",
+      "answer_en": "National Day and Accession Day holiday: Tuesday, 16 December and Wednesday, 17 December 2025. University celebrations take place on 14-15 December.",
       "answer_ar": "إجازة العيد الوطني وعيد الجلوس يومَي الثلاثاء 16 والأربعاء 17 ديسمبر 2025. احتفالات الجامعة في 14 و15 ديسمبر."
     },
     {
@@ -281,9 +422,17 @@
         "eid fitr holiday",
         "eid break",
         "eid ul fitr dates",
+        "when is eid",
+        "eid holiday dates",
+        "small eid",
+        "when do we have eid break",
         "إجازة عيد الفطر",
         "متى عيد الفطر",
-        "عيد الفطر"
+        "عيد الفطر",
+        "امتى عيد الفطر",
+        "إجازة العيد الصغير",
+        "العيد الصغير امتى",
+        "امتى العيد"
       ],
       "answer_en": "Eid Al-Fitr holiday: Friday, 20 March to Sunday, 22 March 2026. Note: date depends on moon sighting.",
       "answer_ar": "إجازة عيد الفطر المبارك من الجمعة 20 مارس إلى الأحد 22 مارس 2026. ملاحظة: مرتبطة برؤية الهلال."
@@ -295,9 +444,14 @@
         "when is eid al adha",
         "eid adha holiday",
         "eid al adha dates",
+        "big eid holiday",
+        "when is eid al adha break",
         "إجازة عيد الأضحى",
         "متى عيد الأضحى",
-        "عيد الأضحى"
+        "عيد الأضحى",
+        "امتى عيد الأضحى",
+        "العيد الكبير امتى",
+        "إجازة العيد الكبير"
       ],
       "answer_en": "Eid Al-Adha holiday: Wednesday, 27 May to Friday, 29 May 2026. Day of Arafah is Tuesday, 26 May. Note: dates depend on moon sighting.",
       "answer_ar": "إجازة عيد الأضحى المبارك من الأربعاء 27 إلى الجمعة 29 مايو 2026. يوم عرفة الثلاثاء 26 مايو. ملاحظة: مرتبطة برؤية الهلال."
@@ -310,11 +464,18 @@
         "first day of ramadan",
         "ramadan hours",
         "ramadan 2026",
+        "when is ramadan",
+        "ramadan start date",
+        "when does ramadan begin",
+        "ramadan working hours",
         "متى يبدأ رمضان",
         "أول يوم رمضان",
         "توقيت رمضان",
         "رمضان 2026",
-        "متى رمضان"
+        "متى رمضان",
+        "امتى رمضان",
+        "دوام رمضان",
+        "أول رمضان امتى"
       ],
       "answer_en": "First day of Ramadan 1447 AH is Wednesday, 18 February 2026. Ramadan working hours begin that day. Note: depends on moon sighting.",
       "answer_ar": "أول أيام رمضان 1447هـ الأربعاء 18 فبراير 2026، وبداية العمل بتوقيت رمضان. ملاحظة: مرتبط برؤية الهلال."
@@ -326,9 +487,13 @@
         "prophet birthday holiday",
         "mawlid holiday",
         "prophet muhammad birthday",
+        "mawlid al nabi",
+        "when is mawlid",
         "المولد النبوي",
         "إجازة المولد النبوي",
-        "متى المولد النبوي"
+        "متى المولد النبوي",
+        "امتى المولد النبوي",
+        "إجازة المولد"
       ],
       "answer_en": "Prophet Muhammad's Birthday holiday: Thursday, 4 September 2025 (1447 AH) and Tuesday, 25 August 2026 (1448 AH). Note: depends on moon sighting.",
       "answer_ar": "إجازة المولد النبوي الشريف: الخميس 4 سبتمبر 2025 (1447هـ) والثلاثاء 25 أغسطس 2026 (1448هـ). ملاحظة: مرتبطة برؤية الهلال."
@@ -339,9 +504,12 @@
       "questions": [
         "ashura holiday",
         "when is ashura",
+        "ashura break",
         "إجازة عاشوراء",
         "متى عاشوراء",
-        "عاشوراء"
+        "عاشوراء",
+        "امتى عاشوراء",
+        "إجازة عاشوراء امتى"
       ],
       "answer_en": "Ashura holiday: Thursday, 25 June and Friday, 26 June 2026. Note: depends on moon sighting.",
       "answer_ar": "إجازة عاشوراء يومَي الخميس 25 والجمعة 26 يونيو 2026. ملاحظة: مرتبطة برؤية الهلال."
@@ -353,8 +521,11 @@
         "islamic new year",
         "hijri new year",
         "islamic new year holiday",
+        "when is hijri new year",
         "رأس السنة الهجرية",
-        "إجازة رأس السنة الهجرية"
+        "إجازة رأس السنة الهجرية",
+        "امتى رأس السنة الهجرية",
+        "رأس السنة الهجرية امتى"
       ],
       "answer_en": "Islamic New Year 1448 AH holiday: Tuesday, 16 June 2026. Note: depends on moon sighting.",
       "answer_ar": "إجازة رأس السنة الهجرية 1448هـ الثلاثاء 16 يونيو 2026. ملاحظة: مرتبطة برؤية الهلال."
@@ -366,9 +537,13 @@
         "new years day",
         "gregorian new year",
         "january 1 holiday",
+        "new year holiday",
+        "when is new years",
         "رأس السنة الميلادية",
         "إجازة رأس السنة",
-        "متى رأس السنة"
+        "متى رأس السنة",
+        "امتى رأس السنة الميلادية",
+        "إجازة يناير"
       ],
       "answer_en": "New Year's Day holiday: Thursday, 1 January 2026.",
       "answer_ar": "إجازة رأس السنة الميلادية الخميس 1 يناير 2026."
@@ -380,9 +555,13 @@
         "labour day",
         "labor day holiday",
         "workers day",
+        "may 1 holiday",
+        "when is labour day",
         "يوم العمال",
         "إجازة يوم العمال",
-        "متى يوم العمال"
+        "متى يوم العمال",
+        "امتى يوم العمال",
+        "إجازة مايو"
       ],
       "answer_en": "Labour Day holiday: Friday, 1 May 2026.",
       "answer_ar": "إجازة يوم العمال الجمعة 1 مايو 2026."
@@ -395,13 +574,20 @@
         "list of holidays",
         "how many holidays",
         "all public holidays",
+        "what holidays are there",
+        "show me all holidays",
+        "holidays this year",
+        "upcoming holidays",
         "وش الإجازات",
         "كل الإجازات",
         "قائمة الإجازات",
-        "كم إجازة"
+        "كم إجازة",
+        "الإجازات الرسمية",
+        "وش الإجازات هذا العام",
+        "ايش الإجازات"
       ],
       "answer_en": "Holidays for 2025/2026: Prophet's Birthday (4 Sep 2025)*, National Day & Accession Day (16-17 Dec 2025), New Year's Day (1 Jan 2026), Ramadan start (18 Feb 2026)*, Eid Al-Fitr (20-22 Mar 2026)*, Labour Day (1 May 2026), Day of Arafah (26 May 2026)*, Eid Al-Adha (27-29 May 2026)*, Islamic New Year (16 Jun 2026)*, Ashura (25-26 Jun 2026)*, Prophet's Birthday (25 Aug 2026)*. Dates with * depend on moon sighting.",
-      "answer_ar": "إجازات 2025/2026: المولد النبوي (4 سبتمبر 2025)*، العيد الوطني وعيد الجلوس (16-17 ديسمبر 2025)، رأس السنة الميلادية (1 يناير 2026)، رمضان (18 فبراير 2026)*، عيد الفطر (20-22 مارس 2026)*، يوم العمال (1 مايو 2026)، يوم عرفة (26 مايو 2026)*، عيد الأضحى (27-29 مايو 2026)*، رأس السنة الهجرية (16 يونيو 2026)*، عاشوراء (25-26 يونيو 2026)*، المولد النبوي (25 أغسطس 2026)*. المواعيد المعلّمة بـ * مرتبطة برؤية الهلال."
+      "answer_ar": "إجازات 2025/2026: المولد النبوي (4 سبتمبر 2025)*، العيد الوطني وعيد الجلوس (16-17 ديسمبر 2025)، رأس السنة الميلادية (1 يناير 2026)، رمضان (18 فبراير 2026)*، عيد الفطر (20-22 مارس 2026)*، يوم العمال (1 مايو 2026)، يوم عرفة (26 مايو 2026)*، عيد الأضحى (27-29 مايو 2026)*، رأس السنة الهجرية (16 يونيو 2026)*، عاشوراء (25-26 يونيو 2026)*، المولد النبوي (25 أغسطس 2026)*."
     },
     {
       "id": "last_day_drop_refund",
@@ -412,9 +598,15 @@
         "course drop deadline",
         "when can i get a refund",
         "fee refund deadline",
+        "when is the last day to drop",
+        "can i get my money back if i drop",
+        "drop course and get refund",
         "آخر موعد لحذف المقررات",
         "استرجاع الرسوم",
-        "متى آخر يوم لحذف مادة"
+        "متى آخر يوم لحذف مادة",
+        "امتى آخر موعد للحذف",
+        "أقدر أسترجع الرسوم",
+        "آخر يوم حذف مع استرجاع فلوس"
       ],
       "answer_en": "Last day to drop courses with fee refund: Thursday, 18 September 2025 (First Semester) and Tuesday, 17 February 2026 (Second Semester).",
       "answer_ar": "آخر موعد لحذف المقررات واسترجاع الرسوم: الخميس 18 سبتمبر 2025 (الفصل الأول)، والثلاثاء 17 فبراير 2026 (الفصل الثاني)."
@@ -428,10 +620,16 @@
         "when can i defer",
         "how to defer a semester",
         "semester postponement",
+        "can i delay my studies",
+        "take a semester off",
+        "when is the deferral deadline",
         "تأجيل الدراسة",
         "تأجيل فصل",
         "متى أقدر أؤجل",
-        "كيف أؤجل الفصل"
+        "كيف أؤجل الفصل",
+        "امتى آخر موعد للتأجيل",
+        "أبي أؤجل الفصل",
+        "تأجيل التسجيل"
       ],
       "answer_en": "Last day to apply for a one- or two-semester deferral: Thursday, 18 September 2025 (First Semester) and Tuesday, 17 February 2026 (Second Semester).",
       "answer_ar": "آخر موعد لتقديم طلب تأجيل دراسة فصل أو فصلين: الخميس 18 سبتمبر 2025 (الفصل الأول)، والثلاثاء 17 فبراير 2026 (الفصل الثاني)."
@@ -445,10 +643,16 @@
         "how to appeal a grade",
         "contest a grade",
         "grade review request",
+        "i want to appeal my grade",
+        "how do i dispute a grade",
+        "complain about grade",
         "تظلم من درجة",
         "كيف أتظلم",
         "اعتراض على الدرجة",
-        "طلب مراجعة الدرجة"
+        "طلب مراجعة الدرجة",
+        "أبي أتظلم من درجة",
+        "امتى أقدر أتظلم",
+        "موعد التظلم من النتائج"
       ],
       "answer_en": "Students can submit grade-appeal requests for the First Semester from Monday, 5 January to Thursday, 11 January 2026. For the Second Semester, from Tuesday, 16 June to Sunday, 21 June 2026.",
       "answer_ar": "يمكن تقديم طلبات التظلم من نتيجة مقرر للفصل الأول من الاثنين 5 يناير إلى الخميس 11 يناير 2026. وللفصل الثاني من الثلاثاء 16 يونيو إلى الأحد 21 يونيو 2026."
@@ -462,10 +666,16 @@
         "change major",
         "change my program",
         "transfer request deadline",
+        "how do i change my major",
+        "can i switch programs",
+        "program change request",
         "نقل التخصص",
         "تحويل بين البرامج",
         "متى أغير تخصصي",
-        "طلب التحويل"
+        "طلب التحويل",
+        "امتى أقدر أغير تخصصي",
+        "أبي أغير تخصصي",
+        "نقل من تخصص لتخصص"
       ],
       "answer_en": "Program transfer requests for the Second Semester 2025/2026: Sunday, 25 January to Thursday, 29 January 2026. For First Semester 2026/2027: Monday, 15 June to Monday, 22 June 2026.",
       "answer_ar": "تقديم طلبات التحويل للفصل الثاني 2025/2026: من الأحد 25 إلى الخميس 29 يناير 2026. وللفصل الأول 2026/2027: من الاثنين 15 إلى الاثنين 22 يونيو 2026."
@@ -479,10 +689,16 @@
         "entrance exam dates",
         "new student admission",
         "when are interviews for new students",
+        "admission test schedule",
+        "when do i take the entrance exam",
+        "how to apply to uob",
         "متى اختبارات القبول",
         "مواعيد القبول",
         "اختبار الالتحاق بالجامعة",
-        "متى المقابلات للطلاب الجدد"
+        "متى المقابلات للطلاب الجدد",
+        "امتى اختبار القبول",
+        "اختبار الدخول للجامعة",
+        "كيف أتقدم للجامعة"
       ],
       "answer_en": "Admission tests and interviews for new students: Monday 1 September to Wednesday 3 September 2025 (First Semester). For 2026/2027: Tuesday 1 September to Thursday 3 September 2026.",
       "answer_ar": "اختبارات القبول والمقابلات للطلاب الجدد: من الاثنين 1 سبتمبر إلى الأربعاء 3 سبتمبر 2025 (الفصل الأول). وللعام 2026/2027: من الثلاثاء 1 إلى الخميس 3 سبتمبر 2026."
@@ -495,9 +711,15 @@
         "advising period",
         "when do i meet my advisor",
         "course advising dates",
+        "academic advising schedule",
+        "when can i see my advisor",
+        "advising appointment",
         "الإرشاد الأكاديمي",
         "متى الإرشاد الأكاديمي",
-        "موعد مقابلة المرشد"
+        "موعد مقابلة المرشد",
+        "امتى الإرشاد",
+        "متى أقابل المرشد الأكاديمي",
+        "فترة الإرشاد الأكاديمي"
       ],
       "answer_en": "Academic advising for Spring 2026 preliminary registration: Wednesday 5 November to Wednesday 3 December 2025. For Fall 2026/2027: Sunday 19 April to Thursday 14 May 2026.",
       "answer_ar": "الإرشاد الأكاديمي للتسجيل المبدئي للفصل الثاني: من الأربعاء 5 نوفمبر إلى الأربعاء 3 ديسمبر 2025. وللعام 2026/2027: من الأحد 19 أبريل إلى الخميس 14 مايو 2026."
@@ -509,9 +731,13 @@
         "preliminary registration",
         "pre registration dates",
         "when is pre registration",
+        "early registration dates",
+        "when does pre registration open",
         "التسجيل المبدئي",
         "متى التسجيل المبدئي",
-        "موعد التسجيل المبدئي"
+        "موعد التسجيل المبدئي",
+        "امتى التسجيل المبدئي",
+        "فترة التسجيل المبدئي"
       ],
       "answer_en": "Preliminary registration for Second Semester: Sunday 23 November to Wednesday 3 December 2025. For Summer 2026: Sunday 19 April to Saturday 25 April 2026. For First Semester 2026/2027: Thursday 30 April to Thursday 14 May 2026.",
       "answer_ar": "التسجيل المبدئي للفصل الثاني: من الأحد 23 نوفمبر إلى الأربعاء 3 ديسمبر 2025. وللفصل الصيفي: من الأحد 19 أبريل إلى السبت 25 أبريل 2026. وللفصل الأول 2026/2027: من الخميس 30 أبريل إلى الخميس 14 مايو 2026."
@@ -524,11 +750,15 @@
         "ielts toefl alternative",
         "english exam for masters",
         "english proficiency test",
+        "english test for masters students",
+        "do i need ielts for uob",
         "امتحان اللغة الإنجليزية للدراسات العليا",
-        "اختبار الإنجليزي للماجستير"
+        "اختبار الإنجليزي للماجستير",
+        "امتى امتحان الإنجليزي للدراسات العليا",
+        "امتحان اللغة للدراسات العليا"
       ],
-      "answer_en": "English language test for graduate applicants without IELTS/TOEFL: Tuesday, 2 September 2025 and Sunday 14 – Monday 15 June 2026.",
-      "answer_ar": "امتحان اللغة الإنجليزية للمتقدمين للدراسات العليا بدون IELTS أو TOEFL: الثلاثاء 2 سبتمبر 2025، والأحد 14 – الاثنين 15 يونيو 2026."
+      "answer_en": "English language test for graduate applicants without IELTS/TOEFL: Tuesday, 2 September 2025 and Sunday 14 - Monday 15 June 2026.",
+      "answer_ar": "امتحان اللغة الإنجليزية للمتقدمين للدراسات العليا بدون IELTS أو TOEFL: الثلاثاء 2 سبتمبر 2025، والأحد 14 - الاثنين 15 يونيو 2026."
     },
     {
       "id": "faculty_report",
@@ -537,8 +767,12 @@
         "when do faculty report",
         "faculty duty start date",
         "when do professors start",
+        "faculty start date",
+        "when do teachers come back",
         "متى يبدأ أعضاء هيئة التدريس",
-        "موعد مباشرة أعضاء الهيئة التدريسية"
+        "موعد مباشرة أعضاء الهيئة التدريسية",
+        "امتى يرجع الأساتذة",
+        "متى يبدأ دوام الأساتذة"
       ],
       "answer_en": "Faculty members report to duty on Monday, 1 September 2025 (First Semester) and Sunday, 1 February 2026 (Second Semester).",
       "answer_ar": "يباشر أعضاء هيئة التدريس عملهم يوم الاثنين 1 سبتمبر 2025 (الفصل الأول) والأحد 1 فبراير 2026 (الفصل الثاني)."
@@ -549,8 +783,12 @@
       "questions": [
         "last day to drop summer course",
         "summer drop deadline",
+        "when can i drop summer class",
+        "drop course summer",
         "آخر موعد حذف مقرر صيفي",
-        "حذف مادة الصيف"
+        "حذف مادة الصيف",
+        "امتى آخر موعد حذف الصيفي",
+        "آخر يوم حذف مواد الصيف"
       ],
       "answer_en": "Last day to drop courses in the Summer session: Sunday, 5 July 2026.",
       "answer_ar": "آخر موعد لحذف المقررات في الفصل الصيفي هو الأحد 5 يوليو 2026."
@@ -562,9 +800,14 @@
         "when are tuition fees due",
         "fee payment deadline",
         "tuition payment date",
+        "when do i pay tuition",
+        "tuition due date",
+        "when is the last day to pay fees",
         "موعد دفع الرسوم",
         "آخر موعد لدفع الرسوم الدراسية",
-        "متى أدفع الرسوم"
+        "متى أدفع الرسوم",
+        "امتى آخر موعد دفع الرسوم",
+        "الرسوم الدراسية امتى تدفع"
       ],
       "answer_en": "Last day to pay tuition fees for the Summer session: Tuesday, 30 June 2026.",
       "answer_ar": "آخر موعد لدفع الرسوم الدراسية للفصل الصيفي هو الثلاثاء 30 يونيو 2026."
