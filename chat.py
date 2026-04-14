@@ -185,7 +185,7 @@ def main():
             break
 
         result, source = answer(question, faq_embeddings, calendar_chunks)
-        print(f"Bot: {json.dumps(result, ensure_ascii=False, indent=2)}")
+        print(f"Bot: {result['response']}")
         print(f"     {source}\n")
 
 
