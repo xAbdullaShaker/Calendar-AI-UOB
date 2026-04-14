@@ -24,7 +24,8 @@ def load_embeddings():
         print("faq_embeddings.json not found. Run embed_faq.py first.")
         exit(1)
     with open("faq_embeddings.json", "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    return data["faqs"] if "faqs" in data else data
 
 
 def load_calendar():

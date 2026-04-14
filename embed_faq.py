@@ -17,8 +17,9 @@ load_dotenv()
 co = cohere.Client(os.getenv("COHERE_API_KEY"))
 
 with open("uob_faq.json", "r", encoding="utf-8") as f:
-    faq = json.load(f)
+    data = json.load(f)
 
+faq = data["faqs"] if "faqs" in data else data
 print(f"Embedding {len(faq)} FAQ entries...")
 
 results = []
@@ -39,6 +40,6 @@ for entry in faq:
     print(f"  ✓ {entry['id']}")
 
 with open("faq_embeddings.json", "w", encoding="utf-8") as f:
-    json.dump(results, f, ensure_ascii=False, indent=2)
+    json.dump({"faqs": results}, f, ensure_ascii=False, indent=2)
 
 print(f"\nDone. Saved to faq_embeddings.json")
