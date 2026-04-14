@@ -1,5 +1,6 @@
 .env
 faq_embeddings.json
+calendar_embeddings.json
 __pycache__/
 *.pyc
 .venv/
