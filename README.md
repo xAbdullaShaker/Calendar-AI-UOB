@@ -121,6 +121,47 @@ For edge cases: RAG retrieves only the relevant chunks — the LLM never sees th
 
 ---
 
+## Token Efficiency — How Chunks Save Cost
+
+### The Problem with Sending the Full Calendar
+The full `uob_calendar.md` is ~3,000+ tokens. If you sent it to the LLM on every fallback question, you'd be paying for tokens describing Eid Al-Adha when the user asked about exam dates — irrelevant data the LLM has to read through anyway.
+
+### How Chunking Fixes This
+
+**Setup:** The calendar is split into 73 small chunks — one event per chunk (~2–4 lines each). Each chunk is embedded once and stored.
+
+**At runtime:** The user's question is already a vector (computed for FAQ matching). That same vector is compared against all 73 chunk vectors. Only the top 4 most relevant chunks are sent to the LLM.
+
+**Example — "Can I still drop a course in November?"**
+
+```
+Chunk similarity scores:
+  withdrawal_w_fall:      0.87  <- sent to LLM
+  drop_refund_deadline:   0.74  <- sent to LLM
+  fall_drop_add:          0.68  <- sent to LLM
+  withdrawal_w_spring:    0.61  <- sent to LLM
+  eid_fitr:               0.12  (ignored)
+  national_day:           0.09  (ignored)
+  ...69 more chunks...          (ignored)
+```
+
+The LLM receives ~200 tokens of relevant context instead of 3,000+ tokens of the full calendar.
+
+### Why Small Chunks Work Better Than Sections
+
+| | Full calendar | Section-level chunks | Event-level chunks (this project) |
+|---|---|---|---|
+| Tokens sent to LLM | ~3,000 | ~500 | ~200 |
+| Retrieval precision | Low | Medium | High |
+| Irrelevant noise | High | Medium | Minimal |
+
+Each chunk covers exactly one event or date range. The retrieval step finds the exact rows relevant to the question — not a whole section that happens to contain the answer buried inside it.
+
+### The No-Cost Path (FAQ)
+For the ~90% of questions that match the FAQ, **zero tokens** are sent to the LLM. The answer comes from a pre-written string in `uob_faq.json`. The only API call is a cheap embedding call (~0.000001 per question) to find the match.
+
+---
+
 ## What Embeddings Do
 
 An embedding converts a sentence into numbers that represent its **meaning** — not its words.
