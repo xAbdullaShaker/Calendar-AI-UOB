@@ -176,12 +176,12 @@ MAX_HISTORY = 10
 def is_followup(question):
     """Return True if the question looks like a follow-up to a previous one."""
     words = question.strip().split()
-    if len(words) < 8:
-        return True
     lower = question.lower()
     if any(lower.startswith(p) for p in FOLLOWUP_PHRASES):
         return True
     if words and words[0].lower() in FOLLOWUP_PRONOUNS:
+        return True
+    if len(words) <= 3:
         return True
     return False
 
@@ -273,12 +273,6 @@ def main():
         question = input("You: ").strip()
         if not question:
             continue
-        if question.lower() in ("quit", "exit", "q"):
-            break
-        if question.lower() in ("clear", "new"):
-            history.clear()
-            print("Bot: Conversation history cleared.\n")
-            continue
 
         question, warning = sanitize_input(question)
         if question is None:
@@ -286,6 +280,13 @@ def main():
             continue
         if warning:
             print(f"     {warning}")
+
+        if question.lower() in ("quit", "exit", "q"):
+            break
+        if question.lower() in ("clear", "new"):
+            history.clear()
+            print("Bot: Conversation history cleared.\n")
+            continue
 
         if not limiter.is_allowed():
             wait = int(limiter.seconds_until_reset()) + 1
