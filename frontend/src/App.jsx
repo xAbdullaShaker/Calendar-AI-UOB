@@ -79,7 +79,6 @@ export default function App() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [rateError, setRateError] = useState(null);
-  const [showSuggestions, setShowSuggestions] = useState(true);
   const [lang, setLang] = useState("en");
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
@@ -96,7 +95,6 @@ export default function App() {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
 
-    setShowSuggestions(false);
     setRateError(null);
     setMessages((prev) => [...prev, { role: "user", text: trimmed }]);
     setInput("");
@@ -140,7 +138,6 @@ export default function App() {
       // ignore
     }
     setRateError(null);
-    setShowSuggestions(true);
     setMessages([
       {
         role: "bot",
@@ -189,9 +186,7 @@ export default function App() {
         {messages.map((msg, i) => (
           <Message key={i} msg={msg} />
         ))}
-        {showSuggestions && !loading && (
-          <Suggestions onSelect={sendMessage} lang={lang} onLangToggle={setLang} />
-        )}
+        <Suggestions onSelect={sendMessage} lang={lang} onLangToggle={setLang} />
         {loading && <TypingIndicator />}
         {rateError && <div className="rate-error">{rateError}</div>}
         <div ref={bottomRef} />
