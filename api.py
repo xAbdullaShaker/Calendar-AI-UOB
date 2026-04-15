@@ -111,6 +111,14 @@ def load_embeddings():
     return data["faqs"] if "faqs" in data else data
 
 
+def load_faq_answers():
+    """Load answer text from uob_faq.json — the live source of truth."""
+    with open("uob_faq.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+    faqs = data["faqs"] if "faqs" in data else data
+    return {entry["id"]: entry for entry in faqs}
+
+
 def load_calendar_chunks():
     with open("calendar_embeddings.json", "r", encoding="utf-8") as f:
         return json.load(f)
@@ -149,8 +157,10 @@ def is_arabic(text):
     return (arabic / total) > 0.5 if total > 0 else False
 
 
-def build_faq_response(entry, arabic, score):
-    answer = entry["answer_ar"] if arabic else entry["answer_en"]
+def build_faq_response(entry, arabic, score, faq_answers):
+    # Always read answer from uob_faq.json so edits take effect without restart
+    live = faq_answers.get(entry["id"], entry)
+    answer = live["answer_ar"] if arabic else live["answer_en"]
     return {
         "ai_interpretation": f"Question matched FAQ entry: {entry['id']}",
         "response_confidence": min(10, round(score * 10)),
@@ -266,11 +276,14 @@ def answer(question, faq_embeddings, calendar_chunks, history):
 
     best_entry, score = find_best_faq_match(question_embedding, faq_embeddings)
 
+    # Always read answers from uob_faq.json so edits take effect without restart
+    faq_answers = load_faq_answers()
+
     # Date-sensitive questions must go to the LLM even on a FAQ hit,
     # because pre-written FAQ answers have no awareness of today's date.
     if score >= SIMILARITY_THRESHOLD and not is_date_sensitive(question):
         source = f"FAQ match: {score:.0%}"
-        result = build_faq_response(best_entry, arabic, score)
+        result = build_faq_response(best_entry, arabic, score, faq_answers)
     else:
         top_chunks = retrieve_top_chunks(question_embedding, calendar_chunks)
         if score >= SIMILARITY_THRESHOLD:
