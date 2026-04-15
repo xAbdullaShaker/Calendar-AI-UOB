@@ -194,7 +194,7 @@ def build_embed_query(question, history):
     return question
 
 
-def ask_llm(question, context_chunks, history):
+def ask_llm(question, context_chunks, history, arabic=False):
     """Call LLM with retrieved chunks as context and conversation history."""
     context = "\n".join(f"- {chunk}" for chunk in context_chunks)
     system = SYSTEM_PROMPT.format(context=context)
@@ -204,9 +204,10 @@ def ask_llm(question, context_chunks, history):
         chat_history.append({"role": "USER", "message": turn["question"]})
         chat_history.append({"role": "CHATBOT", "message": turn["answer"]})
 
+    lang_instruction = "[IMPORTANT: You MUST respond in Arabic only.]\n" if arabic else ""
     response = co.chat(
         model="command-a-03-2025",
-        message=question,
+        message=lang_instruction + question,
         preamble=system,
         chat_history=chat_history,
     )
@@ -250,7 +251,7 @@ def answer(question, faq_embeddings, calendar_chunks, history):
         # RAG fallback: retrieve top chunks, pass only those to LLM
         top_chunks = retrieve_top_chunks(question_embedding, calendar_chunks)
         source = f"[RAG fallback: best FAQ match was {score:.0%}, retrieved {len(top_chunks)} chunks]"
-        result = ask_llm(question, top_chunks, history)
+        result = ask_llm(question, top_chunks, history, arabic=arabic)
 
     return result, source
 
