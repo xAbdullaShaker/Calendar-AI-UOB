@@ -44,15 +44,32 @@ Includes a React web UI with UOB branding and a FastAPI backend.
                     │  sanitize_input()        │
                     │  · truncate > 500 chars  │
                     │  · strip control chars   │
-                    │  · reject gibberish      │
-                    │  · rate limit check      │
+                    │  · reject gibberish/     │
+                    │    single-word > 15 chars│
+                    └────────────┬────────────┘
+                                 │
+                                 ↓
+                    ┌─────────────────────────┐
+                    │  RateLimiter             │
+                    │  max 10 msgs / 60s       │
+                    │  per session             │
                     └────────────┬────────────┘
                                  │
                                  ↓
                     ┌─────────────────────────┐
                     │  is_followup()?          │
+                    │  · starts with pronoun   │
+                    │  · starts with phrase    │
+                    │  · ≤ 3 words             │
                     │  Yes → prepend previous  │
                     │  question to embed query │
+                    └────────────┬────────────┘
+                                 │
+                                 ↓
+                    ┌─────────────────────────┐
+                    │  is_arabic()             │
+                    │  Arabic chars > 50% of   │
+                    │  total alpha chars → AR  │
                     └────────────┬────────────┘
                                  │
                                  ↓
@@ -65,24 +82,25 @@ Includes a React web UI with UOB branding and a FastAPI backend.
                score >= 0.55            score < 0.55
                     │                         │
                     ↓                         ↓
-        ┌───────────────────┐   ┌─────────────────────────┐
-        │  Pre-written FAQ  │   │  Rank 73 calendar chunks │
-        │  answer returned  │   │  Send top 4 to LLM       │
-        │  AR → answer_ar   │   │  + today's date context  │
-        │  EN → answer_en   │   │  + conversation history  │
-        └───────────────────┘   └─────────────────────────┘
+        ┌───────────────────┐   ┌──────────────────────────┐
+        │  Pre-written FAQ  │   │  Rank 73 calendar chunks  │
+        │  answer returned  │   │  Send top 4 to LLM with:  │
+        │  AR → answer_ar   │   │  · today's date + period  │
+        │  EN → answer_en   │   │  · conversation history   │
+        └───────────────────┘   │  · language instruction   │
+                                └──────────────────────────┘
 ```
 
 ---
 
 ## Date Awareness
 
-Every LLM call receives a `Current Date Context` block that includes:
+Every LLM call includes a date context block injected directly into the user message:
 - Today's date (e.g. `Tuesday, 15 April 2026`)
 - Current academic period (e.g. `Second Semester 2025/2026 — classes in progress`)
-- Instructions to resolve relative questions: "is registration open now?", "how many days until finals?", "did I miss the drop deadline?"
+- Hard rules forbidding hedging — the LLM must say "yes, you missed it — 62 days ago" not "if today is after..."
 
-The academic period is calculated in real-time against the actual UOB calendar boundaries — no hardcoding.
+The academic period is calculated in real-time against actual UOB semester boundaries. Injected into the message (not the system preamble) so the LLM cannot ignore it due to "only use calendar data" rules.
 
 ---
 
@@ -104,7 +122,7 @@ The academic period is calculated in real-time against the actual UOB calendar b
 |------|-------------|
 | `chat.py` | CLI chatbot — FAQ match first, RAG on fallback |
 | `api.py` | FastAPI backend — wraps chat.py logic as a REST API |
-| `uob_faq.json` | 37 Q&A entries with 500+ Arabic + English question variants |
+| `uob_faq.json` | 37 Q&A entries with 658 Arabic + English question variants |
 | `uob_calendar.md` | Full academic calendar source |
 | `embed_faq.py` | Embeds FAQ questions — run once, re-run after editing uob_faq.json |
 | `embed_calendar.py` | Chunks calendar into 73 events and embeds each — run once |
