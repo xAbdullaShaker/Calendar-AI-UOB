@@ -5,12 +5,12 @@ const SESSION_ID = crypto.randomUUID();
 const API = "http://localhost:8001";
 
 const SUGGESTIONS = [
-  { en: "When is registration?",     ar: "متى التسجيل؟" },
-  { en: "When are finals?",          ar: "متى الفاينل؟" },
-  { en: "When do classes start?",    ar: "متى تبدأ الدراسة؟" },
-  { en: "What are the holidays?",    ar: "ما هي الإجازات؟" },
-  { en: "When is Eid Al-Fitr?",      ar: "متى عيد الفطر؟" },
-  { en: "When is the drop deadline?",ar: "متى آخر موعد للحذف؟" },
+  { en: "When does the semester begin?",         ar: "متى تبدأ الدراسة؟" },
+  { en: "When are the final examinations?",      ar: "متى الامتحانات النهائية؟" },
+  { en: "When is the registration period?",      ar: "متى فترة التسجيل؟" },
+  { en: "What are the official public holidays?",ar: "ما هي الإجازات الرسمية؟" },
+  { en: "When is the course withdrawal deadline?",ar: "متى آخر موعد الانسحاب من المقررات؟" },
+  { en: "When are examination results announced?",ar: "متى يُعلن عن نتائج الامتحانات؟" },
 ];
 
 function Message({ msg }) {
