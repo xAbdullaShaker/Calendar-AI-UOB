@@ -121,6 +121,11 @@ def sanitize_input(text):
     if not has_word:
         return None, "Please enter a question using words."
 
+    # 5. Reject single-word inputs longer than 15 characters (likely gibberish)
+    words = text.split()
+    if len(words) == 1 and len(text) > 15:
+        return None, "I couldn't understand that. Please rephrase your question."
+
     return text, warning
 
 

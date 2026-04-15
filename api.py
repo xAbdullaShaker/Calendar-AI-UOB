@@ -146,6 +146,12 @@ def sanitize_input(text):
     text = re.sub(r"[\x00-\x09\x0b-\x1f\x7f]", "", text).strip()
     if not re.search(r"[A-Za-z\u0600-\u06FF]", text):
         return None, "Please enter a question using words."
+
+    # Reject single-word inputs longer than 15 characters (likely gibberish)
+    words = text.split()
+    if len(words) == 1 and len(text) > 15:
+        return None, "I couldn't understand that. Please rephrase your question."
+
     return text, warning
 
 
