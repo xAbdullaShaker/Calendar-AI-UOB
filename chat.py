@@ -8,6 +8,8 @@ Usage:
 
 import json
 import os
+import re
+import time
 import numpy as np
 from dotenv import load_dotenv
 import cohere
@@ -70,6 +72,56 @@ def load_calendar_chunks():
         exit(1)
     with open("calendar_embeddings.json", "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+class RateLimiter:
+    """Allow at most `max_calls` per `window_seconds` rolling window."""
+
+    def __init__(self, max_calls=10, window_seconds=60):
+        self.max_calls = max_calls
+        self.window = window_seconds
+        self._timestamps = []
+
+    def is_allowed(self):
+        now = time.monotonic()
+        self._timestamps = [t for t in self._timestamps if now - t < self.window]
+        if len(self._timestamps) >= self.max_calls:
+            return False
+        self._timestamps.append(now)
+        return True
+
+    def seconds_until_reset(self):
+        if not self._timestamps:
+            return 0
+        return max(0, self.window - (time.monotonic() - self._timestamps[0]))
+
+
+def sanitize_input(text):
+    """
+    Clean and validate user input.
+    Returns (sanitized_text, warning_message_or_None).
+    Returns (None, error_message) when the input should be rejected.
+    """
+    warning = None
+
+    # 1. Truncate to 500 characters
+    if len(text) > 500:
+        text = text[:500]
+        warning = "(Your message was truncated to 500 characters.)"
+
+    # 2. Strip control characters except newline
+    text = re.sub(r"[\x00-\x09\x0b-\x1f\x7f]", "", text)
+
+    # 3. Collapse excess whitespace
+    text = text.strip()
+
+    # 4. Reject if no real word characters remain
+    #    A "word character" here means at least one Arabic or Latin letter
+    has_word = bool(re.search(r"[A-Za-z\u0600-\u06FF]", text))
+    if not has_word:
+        return None, "Please enter a question using words."
+
+    return text, warning
 
 
 def is_arabic(text):
@@ -215,6 +267,7 @@ def main():
     print("\nUOB Calendar AI — type your question (or 'quit' to exit, 'clear' to reset memory)\n")
 
     history = []
+    limiter = RateLimiter(max_calls=10, window_seconds=60)
 
     while True:
         question = input("You: ").strip()
@@ -225,6 +278,18 @@ def main():
         if question.lower() in ("clear", "new"):
             history.clear()
             print("Bot: Conversation history cleared.\n")
+            continue
+
+        question, warning = sanitize_input(question)
+        if question is None:
+            print(f"Bot: {warning}\n")
+            continue
+        if warning:
+            print(f"     {warning}")
+
+        if not limiter.is_allowed():
+            wait = int(limiter.seconds_until_reset()) + 1
+            print(f"Bot: You're sending messages too fast. Please wait {wait} seconds.\n")
             continue
 
         result, source = answer(question, faq_embeddings, calendar_chunks, history)
