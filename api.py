@@ -156,8 +156,11 @@ def sanitize_input(text):
 
 
 def ask_llm(question, context_chunks, history, arabic=False):
+    from datetime import date
+    today = date.today().strftime("%A, %d %B %Y")
     context = "\n".join(f"- {chunk}" for chunk in context_chunks)
     system = SYSTEM_PROMPT.format(context=context)
+    system = f"Today's date is {today}. Use this to determine which semester is current or upcoming.\n\n" + system
     chat_history = []
     for turn in history:
         chat_history.append({"role": "USER", "message": turn["question"]})
