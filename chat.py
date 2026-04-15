@@ -243,7 +243,7 @@ def build_embed_query(question, history):
 def ask_llm(question, context_chunks, history, arabic=False):
     """Call LLM with retrieved chunks as context and conversation history."""
     context = "\n".join(f"- {chunk}" for chunk in context_chunks)
-    system = get_date_context() + "\n" + SYSTEM_PROMPT.format(context=context)
+    system = SYSTEM_PROMPT.format(context=context)
 
     chat_history = []
     for turn in history:
@@ -251,9 +251,10 @@ def ask_llm(question, context_chunks, history, arabic=False):
         chat_history.append({"role": "CHATBOT", "message": turn["answer"]})
 
     lang_instruction = "[IMPORTANT: You MUST respond in Arabic only.]\n" if arabic else ""
+    date_prefix = get_date_context()
     response = co.chat(
         model="command-a-03-2025",
-        message=lang_instruction + question,
+        message=lang_instruction + date_prefix + "User question: " + question,
         preamble=system,
         chat_history=chat_history,
     )
