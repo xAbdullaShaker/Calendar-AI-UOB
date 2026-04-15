@@ -165,23 +165,11 @@ export default function App() {
       <header className="header">
         <div className="header-inner">
           <div className="logo">
-            {/* UOB Crest SVG */}
-            <svg className="logo-crest" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="50" cy="50" r="48" fill="none" stroke="#c9a84c" strokeWidth="2"/>
-              <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(201,168,76,0.4)" strokeWidth="1"/>
-              {/* Shield */}
-              <path d="M50 18 L72 28 L72 55 Q72 72 50 82 Q28 72 28 55 L28 28 Z"
-                fill="rgba(255,255,255,0.12)" stroke="#c9a84c" strokeWidth="1.5"/>
-              {/* UOB letters */}
-              <text x="50" y="57" textAnchor="middle" fill="#fff"
-                fontSize="16" fontWeight="700" fontFamily="serif" letterSpacing="1">UoB</text>
-              {/* Stars */}
-              {[0,1,2,3,4,5].map(i => {
-                const angle = (i * 60 - 90) * Math.PI / 180;
-                return <circle key={i} cx={50 + 44 * Math.cos(angle)} cy={50 + 44 * Math.sin(angle)}
-                  r="2" fill="#c9a84c"/>;
-              })}
-            </svg>
+            <img
+              className="logo-crest"
+              src="https://www.uob.edu.bh/wp-content/uploads/site-prod/uploads/UOB-new-logo.png"
+              alt="University of Bahrain"
+            />
             <div className="logo-divider" />
             <div className="logo-text">
               <h1>University of Bahrain</h1>
