@@ -9,6 +9,7 @@ import json
 import os
 import re
 import time
+from datetime import date
 import numpy as np
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -21,6 +22,53 @@ load_dotenv()
 co = cohere.Client(os.getenv("COHERE_API_KEY"))
 
 SIMILARITY_THRESHOLD = 0.55
+
+
+def get_date_context():
+    """Return today's date and current UOB academic period as a formatted string."""
+    today = date.today()
+    today_str = today.strftime("%A, %d %B %Y")
+
+    # UOB 2025/2026 academic period boundaries
+    periods = [
+        (date(2025,  9,  7), date(2025, 12, 18), "First Semester 2025/2026 (classes in progress)"),
+        (date(2025, 12, 19), date(2026,  1,  8), "First Semester 2025/2026 — Final Exam Period"),
+        (date(2026,  2,  3), date(2026,  5, 14), "Second Semester 2025/2026 (classes in progress)"),
+        (date(2026,  5, 15), date(2026,  5, 30), "Second Semester 2025/2026 — Final Exam Period"),
+        (date(2026,  7,  1), date(2026,  8,  7), "Summer Session 2026 (in progress)"),
+        (date(2026,  8,  8), date(2026,  8, 14), "Summer Session 2026 — Final Exam Period"),
+    ]
+
+    current_period = "Between semesters / No active semester"
+    for start, end, label in periods:
+        if start <= today <= end:
+            current_period = label
+            break
+    else:
+        # Determine what's coming next
+        for start, end, label in periods:
+            if today < start:
+                days_until = (start - today).days
+                current_period = f"Between semesters — {label} starts in {days_until} day(s)"
+                break
+
+    return (
+        f"Current Date Context:\n"
+        f"Today's date is: {today_str}\n"
+        f"Current academic period: {current_period}\n\n"
+        f"When answering, use today's date to:\n"
+        f"- Resolve relative time questions (is registration open now?, did I miss the drop deadline?, "
+        f"how many days until finals?, what's happening this week?).\n"
+        f"- Compare event dates against today and state status clearly: "
+        f"'open now', 'starts in X days', 'ended X days ago', 'happening today'.\n"
+        f"- For ongoing periods (e.g. registration window Aug 10–Aug 24), explicitly say whether "
+        f"today falls inside, before, or after the window.\n"
+        f"- For moon-sighting dates marked with *, remind the user the date may shift ±1 day "
+        f"AND note whether the shift could affect the answer relative to today.\n"
+        f"- Never assume the user knows today's date — always ground your answer in it when time-relative.\n\n"
+        f"If the user asks a non-time-relative question (e.g. 'when does fall semester start?'), "
+        f"answer normally without forcing a 'days from today' calculation.\n"
+    )
 TOP_K_CHUNKS = 4
 MAX_HISTORY = 10
 
@@ -156,11 +204,8 @@ def sanitize_input(text):
 
 
 def ask_llm(question, context_chunks, history, arabic=False):
-    from datetime import date
-    today = date.today().strftime("%A, %d %B %Y")
     context = "\n".join(f"- {chunk}" for chunk in context_chunks)
-    system = SYSTEM_PROMPT.format(context=context)
-    system = f"Today's date is {today}. Use this to determine which semester is current or upcoming.\n\n" + system
+    system = get_date_context() + "\n" + SYSTEM_PROMPT.format(context=context)
     chat_history = []
     for turn in history:
         chat_history.append({"role": "USER", "message": turn["question"]})
