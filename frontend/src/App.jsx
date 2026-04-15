@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import "./App.css";
+import botAvatar from "./assets/bot-avatar.png";
 
 const SESSION_ID = crypto.randomUUID();
 const API = "http://localhost:8001";
@@ -17,6 +18,7 @@ function Message({ msg }) {
   const isBot = msg.role === "bot";
   return (
     <div className={`message ${msg.role}`}>
+      {isBot && <img src={botAvatar} className="bot-avatar" alt="AI" />}
       <div className="bubble">
         <p>{msg.text}</p>
         {isBot && msg.source && <span className="source">{msg.source}</span>}
