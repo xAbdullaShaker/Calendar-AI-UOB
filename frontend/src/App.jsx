@@ -36,15 +36,30 @@ function TypingIndicator() {
   );
 }
 
-function Suggestions({ onSelect }) {
+function Suggestions({ onSelect, lang, onLangToggle }) {
   return (
     <div className="suggestions">
-      <p className="suggestions-label">Quick questions / أسئلة سريعة</p>
+      <div className="suggestions-header">
+        <p className="suggestions-label">Quick questions / أسئلة سريعة</p>
+        <div className="lang-toggle">
+          <button
+            className={`lang-btn ${lang === "en" ? "active" : ""}`}
+            onClick={() => onLangToggle("en")}
+          >EN</button>
+          <button
+            className={`lang-btn ${lang === "ar" ? "active" : ""}`}
+            onClick={() => onLangToggle("ar")}
+          >ع</button>
+        </div>
+      </div>
       <div className="suggestions-grid">
         {SUGGESTIONS.map((s, i) => (
-          <button key={i} className="suggestion-chip" onClick={() => onSelect(s.en)}>
-            <span className="chip-en">{s.en}</span>
-            <span className="chip-ar">{s.ar}</span>
+          <button
+            key={i}
+            className={`suggestion-chip ${lang === "ar" ? "rtl" : ""}`}
+            onClick={() => onSelect(lang === "ar" ? s.ar : s.en)}
+          >
+            {lang === "ar" ? s.ar : s.en}
           </button>
         ))}
       </div>
@@ -63,6 +78,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [rateError, setRateError] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [lang, setLang] = useState("en");
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -166,7 +182,7 @@ export default function App() {
           <Message key={i} msg={msg} />
         ))}
         {showSuggestions && !loading && (
-          <Suggestions onSelect={sendMessage} />
+          <Suggestions onSelect={sendMessage} lang={lang} onLangToggle={setLang} />
         )}
         {loading && <TypingIndicator />}
         {rateError && <div className="rate-error">{rateError}</div>}
