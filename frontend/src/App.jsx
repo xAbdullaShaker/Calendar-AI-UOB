@@ -2,7 +2,16 @@ import { useState, useRef, useEffect } from "react";
 import "./App.css";
 
 const SESSION_ID = crypto.randomUUID();
-const API = "http://localhost:8000";
+const API = "http://localhost:8001";
+
+const SUGGESTIONS = [
+  { en: "When is registration?",     ar: "متى التسجيل؟" },
+  { en: "When are finals?",          ar: "متى الفاينل؟" },
+  { en: "When do classes start?",    ar: "متى تبدأ الدراسة؟" },
+  { en: "What are the holidays?",    ar: "ما هي الإجازات؟" },
+  { en: "When is Eid Al-Fitr?",      ar: "متى عيد الفطر؟" },
+  { en: "When is the drop deadline?",ar: "متى آخر موعد للحذف؟" },
+];
 
 function Message({ msg }) {
   const isBot = msg.role === "bot";
@@ -27,6 +36,22 @@ function TypingIndicator() {
   );
 }
 
+function Suggestions({ onSelect }) {
+  return (
+    <div className="suggestions">
+      <p className="suggestions-label">Quick questions / أسئلة سريعة</p>
+      <div className="suggestions-grid">
+        {SUGGESTIONS.map((s, i) => (
+          <button key={i} className="suggestion-chip" onClick={() => onSelect(s.en)}>
+            <span className="chip-en">{s.en}</span>
+            <span className="chip-ar">{s.ar}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [messages, setMessages] = useState([
     {
@@ -37,6 +62,7 @@ export default function App() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [rateError, setRateError] = useState(null);
+  const [showSuggestions, setShowSuggestions] = useState(true);
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -52,12 +78,12 @@ export default function App() {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
 
+    setShowSuggestions(false);
     setRateError(null);
     setMessages((prev) => [...prev, { role: "user", text: trimmed }]);
     setInput("");
     setLoading(true);
 
-    // Auto-resize textarea back to 1 row
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -93,9 +119,10 @@ export default function App() {
         body: JSON.stringify({ session_id: SESSION_ID }),
       });
     } catch {
-      // ignore network error on clear
+      // ignore
     }
     setRateError(null);
+    setShowSuggestions(true);
     setMessages([
       {
         role: "bot",
@@ -113,7 +140,6 @@ export default function App() {
 
   function handleInput(e) {
     setInput(e.target.value);
-    // Auto-grow textarea
     e.target.style.height = "auto";
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
   }
@@ -139,6 +165,9 @@ export default function App() {
         {messages.map((msg, i) => (
           <Message key={i} msg={msg} />
         ))}
+        {showSuggestions && !loading && (
+          <Suggestions onSelect={sendMessage} />
+        )}
         {loading && <TypingIndicator />}
         {rateError && <div className="rate-error">{rateError}</div>}
         <div ref={bottomRef} />
