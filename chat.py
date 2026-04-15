@@ -73,7 +73,10 @@ def load_calendar_chunks():
 
 
 def is_arabic(text):
-    return any("\u0600" <= c <= "\u06FF" for c in text)
+    arabic = sum(1 for c in text if "\u0600" <= c <= "\u06FF")
+    latin = sum(1 for c in text if c.isalpha() and not ("\u0600" <= c <= "\u06FF"))
+    total = arabic + latin
+    return (arabic / total) > 0.5 if total > 0 else False
 
 
 def cosine_similarity(a, b):
