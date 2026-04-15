@@ -95,12 +95,56 @@ Includes a React web UI with UOB branding and a FastAPI backend.
 
 ## Date Awareness
 
-Every LLM call includes a date context block injected directly into the user message:
-- Today's date (e.g. `Tuesday, 15 April 2026`)
-- Current academic period (e.g. `Second Semester 2025/2026 — classes in progress`)
-- Hard rules forbidding hedging — the LLM must say "yes, you missed it — 62 days ago" not "if today is after..."
+The bot knows today's date and uses it to answer time-relative questions like:
+- "Did I miss the registration deadline?"
+- "How many days until finals?"
+- "Is the drop period open right now?"
 
-The academic period is calculated in real-time against actual UOB semester boundaries. Injected into the message (not the system preamble) so the LLM cannot ignore it due to "only use calendar data" rules.
+### How it works
+
+Every LLM call has a date context block injected directly into the message:
+
+```
+Today is: Tuesday, 15 April 2026
+Current academic period: Second Semester 2025/2026 (classes in progress)
+
+CRITICAL RULES:
+- You KNOW today's date. Never say "if today is..." — state facts directly.
+- Say exactly: "Yes, you missed it — the deadline was X days ago"
+  or "No, it opens in X days"
+  or "Yes, it is open right now until [date]"
+```
+
+The `get_date_context()` function calculates the current period in real-time by comparing today's date against all UOB semester boundaries:
+
+| Period | Start | End |
+|--------|-------|-----|
+| First Semester (classes) | 7 Sep 2025 | 18 Dec 2025 |
+| First Semester (finals) | 19 Dec 2025 | 8 Jan 2026 |
+| Second Semester (classes) | 3 Feb 2026 | 14 May 2026 |
+| Second Semester (finals) | 15 May 2026 | 30 May 2026 |
+| Summer Session (classes) | 1 Jul 2026 | 7 Aug 2026 |
+| Summer Session (finals) | 8 Aug 2026 | 14 Aug 2026 |
+
+### Example
+
+User asks: **"Did I miss the registration deadline?"** on 15 April 2026
+
+The bot receives:
+```
+Today is: Tuesday, 15 April 2026
+Current academic period: Second Semester 2025/2026 (classes in progress)
+User question: Did I miss the registration deadline?
+```
+
+Bot answers:
+> Yes, you missed the Second Semester registration period. It ran from 1–12 February 2026 — that ended 62 days ago.
+
+### Why injected into the message, not the system prompt
+
+The system prompt tells the LLM: *"Only use calendar data in the `<uob_data>` tags."*
+If the date was placed in the system prompt, the LLM would treat it as outside the allowed data and ignore it.
+By injecting it into the message itself, the LLM processes it as part of the question — it cannot ignore it.
 
 ---
 
