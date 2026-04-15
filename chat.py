@@ -49,21 +49,16 @@ def get_date_context():
                 break
 
     return (
-        f"Current Date Context:\n"
-        f"Today's date is: {today_str}\n"
+        f"[SYSTEM: DATE FACTS — YOU KNOW THESE WITH CERTAINTY. DO NOT HEDGE.]\n"
+        f"Today is: {today_str}\n"
         f"Current academic period: {current_period}\n\n"
-        f"When answering, use today's date to:\n"
-        f"- Resolve relative time questions (is registration open now?, did I miss the drop deadline?, "
-        f"how many days until finals?, what's happening this week?).\n"
-        f"- Compare event dates against today and state status clearly: "
-        f"'open now', 'starts in X days', 'ended X days ago', 'happening today'.\n"
-        f"- For ongoing periods (e.g. registration window Aug 10–Aug 24), explicitly say whether "
-        f"today falls inside, before, or after the window.\n"
-        f"- For moon-sighting dates marked with *, remind the user the date may shift ±1 day "
-        f"AND note whether the shift could affect the answer relative to today.\n"
-        f"- Never assume the user knows today's date — always ground your answer in it when time-relative.\n\n"
-        f"If the user asks a non-time-relative question (e.g. 'when does fall semester start?'), "
-        f"answer normally without forcing a 'days from today' calculation.\n"
+        f"CRITICAL RULES for time-relative questions:\n"
+        f"- You KNOW today's date. Never say 'if today is...' or 'assuming today is...'. State facts directly.\n"
+        f"- Compare any deadline/event date against {today_str} and give a definitive answer.\n"
+        f"- Say exactly: 'Yes, you missed it — the deadline was X days ago' or 'No, it opens in X days' or 'Yes, it is open right now until [date]'.\n"
+        f"- For ongoing windows, say whether today ({today.strftime('%d %b %Y')}) falls inside, before, or after.\n"
+        f"- For moon-sighting dates (*), note the ±1 day uncertainty may affect the answer.\n"
+        f"- For non-time-relative questions ('when does X start?'), answer normally without forcing a countdown.\n"
     )
 TOP_K_CHUNKS = 4
 
