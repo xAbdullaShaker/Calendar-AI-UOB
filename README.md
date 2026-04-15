@@ -51,7 +51,7 @@ Includes a React web UI with UOB branding and a FastAPI backend.
                                  ↓
                     ┌─────────────────────────┐
                     │  RateLimiter             │
-                    │  max 10 msgs / 60s       │
+                    │  max 30 msgs / 10 min    │
                     │  per session             │
                     └────────────┬────────────┘
                                  │
@@ -81,15 +81,37 @@ Includes a React web UI with UOB branding and a FastAPI backend.
                     ┌────────────┴────────────┐
                score >= 0.55            score < 0.55
                     │                         │
-                    ↓                         ↓
-        ┌───────────────────┐   ┌──────────────────────────┐
-        │  Pre-written FAQ  │   │  Rank 73 calendar chunks  │
-        │  answer returned  │   │  Send top 4 to LLM with:  │
-        │  AR → answer_ar   │   │  · today's date + period  │
-        │  EN → answer_en   │   │  · conversation history   │
-        └───────────────────┘   │  · language instruction   │
-                                └──────────────────────────┘
+                    ↓                         │
+        ┌───────────────────────┐             │
+        │  is_date_sensitive()?  │             │
+        │  · "did i miss"        │             │
+        │  · "is it open"        │             │
+        │  · "can i still"       │             │
+        │  · "is it too late"    │             │
+        │  · "how many days"     │             │
+        │  · Arabic equivalents  │             │
+        └──────┬────────────────┘             │
+          No   │        Yes                   │
+          │    │         └────────────────────┤
+          ↓    │                              ↓
+  ┌────────────────┐          ┌──────────────────────────┐
+  │ Pre-written FAQ│          │  Rank 73 calendar chunks  │
+  │ answer returned│          │  Send top 4 to LLM with:  │
+  │ AR → answer_ar │          │  · today's date + period  │
+  │ EN → answer_en │          │  · conversation history   │
+  └────────────────┘          │  · language instruction   │
+                              └──────────────────────────┘
 ```
+
+### Why `is_date_sensitive()` matters
+
+FAQ answers are static pre-written strings — they have no knowledge of today's date.
+Without this check, a question like *"did I miss the registration?"* could match a FAQ entry
+and return a 2025 date with zero context about whether it has passed.
+
+`is_date_sensitive()` intercepts those questions before the FAQ answer is returned and forces
+them through the LLM, which receives today's date and can say:
+> "Yes, you missed it — Second Semester registration closed 62 days ago (12 Feb 2026)."
 
 ---
 
