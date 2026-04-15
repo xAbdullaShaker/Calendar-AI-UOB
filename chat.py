@@ -113,15 +113,47 @@ def build_faq_response(entry, arabic, score):
     }
 
 
-def ask_llm(question, context_chunks):
-    """Call LLM with only the retrieved chunks as context."""
+FOLLOWUP_PRONOUNS = {"it", "that", "those", "them", "they", "this", "these"}
+FOLLOWUP_PHRASES = ("what about", "and ", "also ", "how about")
+MAX_HISTORY = 10
+
+
+def is_followup(question):
+    """Return True if the question looks like a follow-up to a previous one."""
+    words = question.strip().split()
+    if len(words) < 8:
+        return True
+    lower = question.lower()
+    if any(lower.startswith(p) for p in FOLLOWUP_PHRASES):
+        return True
+    if words and words[0].lower() in FOLLOWUP_PRONOUNS:
+        return True
+    return False
+
+
+def build_embed_query(question, history):
+    """If the question is a follow-up, prepend the last user question for context."""
+    if history and is_followup(question):
+        last_user_q = history[-1]["question"]
+        return f"{last_user_q} {question}"
+    return question
+
+
+def ask_llm(question, context_chunks, history):
+    """Call LLM with retrieved chunks as context and conversation history."""
     context = "\n".join(f"- {chunk}" for chunk in context_chunks)
     system = SYSTEM_PROMPT.format(context=context)
+
+    chat_history = []
+    for turn in history:
+        chat_history.append({"role": "USER", "message": turn["question"]})
+        chat_history.append({"role": "CHATBOT", "message": turn["answer"]})
 
     response = co.chat(
         model="command-a-03-2025",
         message=question,
         preamble=system,
+        chat_history=chat_history,
     )
     raw = response.text.strip()
 
@@ -140,12 +172,14 @@ def ask_llm(question, context_chunks):
         }
 
 
-def answer(question, faq_embeddings, calendar_chunks):
+def answer(question, faq_embeddings, calendar_chunks, history):
     arabic = is_arabic(question)
 
-    # Embed user question (used for both FAQ match and chunk retrieval)
+    # Use expanded query for embedding if this looks like a follow-up
+    embed_query = build_embed_query(question, history)
+
     response = co.embed(
-        texts=[question],
+        texts=[embed_query],
         model="embed-multilingual-v3.0",
         input_type="search_query",
     )
@@ -161,7 +195,7 @@ def answer(question, faq_embeddings, calendar_chunks):
         # RAG fallback: retrieve top chunks, pass only those to LLM
         top_chunks = retrieve_top_chunks(question_embedding, calendar_chunks)
         source = f"[RAG fallback: best FAQ match was {score:.0%}, retrieved {len(top_chunks)} chunks]"
-        result = ask_llm(question, top_chunks)
+        result = ask_llm(question, top_chunks, history)
 
     return result, source
 
@@ -175,7 +209,9 @@ def main():
     calendar_chunks = load_calendar_chunks()
     print(f"  {len(calendar_chunks)} calendar chunks loaded")
 
-    print("\nUOB Calendar AI — type your question (or 'quit' to exit)\n")
+    print("\nUOB Calendar AI — type your question (or 'quit' to exit, 'clear' to reset memory)\n")
+
+    history = []
 
     while True:
         question = input("You: ").strip()
@@ -183,10 +219,19 @@ def main():
             continue
         if question.lower() in ("quit", "exit", "q"):
             break
+        if question.lower() in ("clear", "new"):
+            history.clear()
+            print("Bot: Conversation history cleared.\n")
+            continue
 
-        result, source = answer(question, faq_embeddings, calendar_chunks)
+        result, source = answer(question, faq_embeddings, calendar_chunks, history)
         print(f"Bot: {result['response']}")
         print(f"     {source}\n")
+
+        # Save turn to history, capped at MAX_HISTORY
+        history.append({"question": question, "answer": result["response"]})
+        if len(history) > MAX_HISTORY:
+            history.pop(0)
 
 
 if __name__ == "__main__":
