@@ -20,7 +20,7 @@ load_dotenv()
 
 co = cohere.Client(os.getenv("COHERE_API_KEY"))
 
-SIMILARITY_THRESHOLD = 0.65
+SIMILARITY_THRESHOLD = 0.55
 TOP_K_CHUNKS = 4
 MAX_HISTORY = 10
 

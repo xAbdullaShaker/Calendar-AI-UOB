@@ -18,7 +18,7 @@ load_dotenv()
 
 co = cohere.Client(os.getenv("COHERE_API_KEY"))
 
-SIMILARITY_THRESHOLD = 0.65
+SIMILARITY_THRESHOLD = 0.55
 TOP_K_CHUNKS = 4
 
 SYSTEM_PROMPT = """You are the official AI assistant for the University of Bahrain (UoB) academic calendar 2025/2026.

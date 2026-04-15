@@ -161,7 +161,7 @@ def main():
         acc = r["accuracy"]
         n_correct = round(acc * total)
         n_errors = total - n_correct
-        marker = " ◄ best" if acc > best_accuracy else ""
+        marker = " << best" if acc > best_accuracy else ""
 
         if acc > best_accuracy:
             best_accuracy = acc
