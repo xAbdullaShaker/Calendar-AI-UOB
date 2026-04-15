@@ -161,6 +161,30 @@ def build_faq_response(entry, arabic, score):
 FOLLOWUP_PRONOUNS = {"it", "that", "those", "them", "they", "this", "these"}
 FOLLOWUP_PHRASES = ("what about", "and ", "also ", "how about")
 
+DATE_SENSITIVE_PATTERNS = (
+    "did i miss", "have i missed", "did we miss",
+    "is it open", "is it closed", "is it still open",
+    "is registration open", "is registration closed",
+    "has it started", "has it ended", "has it passed",
+    "is it over", "is it done", "is it finished",
+    "how many days", "how long until", "how long ago",
+    "when is it due", "is today", "right now",
+    "currently open", "currently closed", "still ongoing",
+    "already started", "already ended", "already passed",
+    "can i still", "is it too late", "too late to",
+    "هل فاتني", "هل انتهى", "هل بدأ", "هل لا يزال",
+    "هل التسجيل مفتوح", "كم يوم", "هل فات",
+    # Generic "when is X" for recurring semester events — needs LLM to pick the right semester
+    "is registration open", "is registration closed",
+    "is registration still", "registration still open",
+)
+
+
+def is_date_sensitive(question):
+    """Return True if the question requires knowing today's date to answer correctly."""
+    lower = question.lower()
+    return any(lower.find(p) != -1 for p in DATE_SENSITIVE_PATTERNS)
+
 
 def is_followup(question):
     words = question.strip().split()
@@ -242,12 +266,17 @@ def answer(question, faq_embeddings, calendar_chunks, history):
 
     best_entry, score = find_best_faq_match(question_embedding, faq_embeddings)
 
-    if score >= SIMILARITY_THRESHOLD:
+    # Date-sensitive questions must go to the LLM even on a FAQ hit,
+    # because pre-written FAQ answers have no awareness of today's date.
+    if score >= SIMILARITY_THRESHOLD and not is_date_sensitive(question):
         source = f"FAQ match: {score:.0%}"
         result = build_faq_response(best_entry, arabic, score)
     else:
         top_chunks = retrieve_top_chunks(question_embedding, calendar_chunks)
-        source = f"RAG fallback — best FAQ match was {score:.0%}, retrieved {len(top_chunks)} chunks"
+        if score >= SIMILARITY_THRESHOLD:
+            source = f"RAG (date-sensitive override) — FAQ was {score:.0%}, retrieved {len(top_chunks)} chunks"
+        else:
+            source = f"RAG fallback — best FAQ match was {score:.0%}, retrieved {len(top_chunks)} chunks"
         result = ask_llm(question, top_chunks, history, arabic=arabic)
 
     return result, source
@@ -292,7 +321,7 @@ app.add_middleware(
 
 faq_embeddings = load_embeddings()
 calendar_chunks = load_calendar_chunks()
-rate_limiter = RateLimiter(max_calls=10, window_seconds=60)
+rate_limiter = RateLimiter(max_calls=30, window_seconds=600)
 
 # In-memory session histories: { session_id: [turns] }
 sessions: dict[str, list] = {}
