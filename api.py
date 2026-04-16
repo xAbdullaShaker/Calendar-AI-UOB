@@ -243,7 +243,7 @@ def ask_llm(question, context_chunks, history, arabic=False):
     lang_instruction = "[IMPORTANT: You MUST respond in Arabic only.]\n" if arabic else ""
     date_prefix = get_date_context()
     response = co.chat(
-        model="command-a-03-2025",
+        model="command-r-plus-08-2024",
         message=lang_instruction + date_prefix + "User question: " + question,
         preamble=system,
         chat_history=chat_history,
@@ -263,7 +263,7 @@ def ask_llm(question, context_chunks, history, arabic=False):
         }
 
 
-def answer(question, faq_embeddings, calendar_chunks, history):
+def answer(question, faq_embeddings, faq_answers, calendar_chunks, history):
     arabic = is_arabic(question)
     embed_query = build_embed_query(question, history)
 
@@ -275,9 +275,6 @@ def answer(question, faq_embeddings, calendar_chunks, history):
     question_embedding = response.embeddings[0]
 
     best_entry, score = find_best_faq_match(question_embedding, faq_embeddings)
-
-    # Always read answers from uob_faq.json so edits take effect without restart
-    faq_answers = load_faq_answers()
 
     # Date-sensitive questions must go to the LLM even on a FAQ hit,
     # because pre-written FAQ answers have no awareness of today's date.
@@ -333,6 +330,7 @@ app.add_middleware(
 )
 
 faq_embeddings = load_embeddings()
+faq_answers = load_faq_answers()
 calendar_chunks = load_calendar_chunks()
 rate_limiter = RateLimiter(max_calls=30, window_seconds=600)
 
@@ -367,7 +365,7 @@ def chat(req: ChatRequest):
         raise HTTPException(status_code=400, detail=warning)
 
     history = sessions.get(req.session_id, [])
-    result, source = answer(clean, faq_embeddings, calendar_chunks, history)
+    result, source = answer(clean, faq_embeddings, faq_answers, calendar_chunks, history)
 
     history.append({"question": clean, "answer": result["response"]})
     if len(history) > MAX_HISTORY:
