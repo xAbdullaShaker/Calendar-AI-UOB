@@ -3,7 +3,7 @@ import "./App.css";
 import botAvatar from "./assets/bot-avatar.png";
 
 const SESSION_ID = crypto.randomUUID();
-const API = "http://localhost:8001";
+const API = import.meta.env.VITE_API_URL || "http://localhost:8001";
 
 const SUGGESTIONS = [
   { en: "When does the semester begin?",         ar: "متى تبدأ الدراسة؟" },

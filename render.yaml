@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: uob-calendar-ai-api
+    env: python
+    buildCommand: pip install -r requirements.txt && python embed_faq.py && python embed_calendar.py
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: COHERE_API_KEY
+        sync: false
