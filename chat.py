@@ -234,6 +234,13 @@ DATE_SENSITIVE_PATTERNS = (
     # Generic "when is X" for recurring semester events — needs LLM to pick the right semester
     "is registration open", "is registration closed",
     "is registration still", "registration still open",
+    # Generic finals/exams questions — LLM must pick upcoming vs past based on today's date
+    "when are final exams", "when are finals", "when are exams",
+    "final exam dates", "finals schedule", "when are my exams",
+    "exam period", "exam dates", "when do finals",
+    "متى الامتحانات النهائية", "متى الامتحانات", "الامتحانات النهائية",
+    "موعد الامتحانات", "الامتحانات امتى", "امتى الامتحانات",
+    "متى الفاينل", "الفاينل امتى", "موعد الفاينل", "الفاينلز",
 )
 
 
