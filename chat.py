@@ -241,6 +241,13 @@ DATE_SENSITIVE_PATTERNS = (
     "متى الامتحانات النهائية", "متى الامتحانات", "الامتحانات النهائية",
     "موعد الامتحانات", "الامتحانات امتى", "امتى الامتحانات",
     "متى الفاينل", "الفاينل امتى", "موعد الفاينل", "الفاينلز",
+    # Generic results questions — LLM must pick upcoming vs past based on today's date
+    "when are results", "when do results", "when do grades", "when are grades",
+    "results announced", "grades released", "results announcement",
+    "grade release", "when will results", "when will grades",
+    "متى النتائج", "متى تظهر النتائج", "متى تُعلن النتائج", "متى يُعلن",
+    "نتائج الامتحانات", "إعلان النتائج", "النتائج امتى", "امتى النتائج",
+    "متى أعرف نتيجتي", "نتيجتي امتى", "متى تطلع النتائج", "امتى تطلع النتائج",
 )
 
 
