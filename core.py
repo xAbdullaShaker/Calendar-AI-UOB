@@ -45,6 +45,7 @@ DATE_SENSITIVE_PATTERNS = (
     "متى التسجيل", "التسجيل امتى", "امتى التسجيل",
     "الحذف والإضافة امتى", "امتى الحذف والإضافة", "متى الحذف والإضافة",
     "فترة التسجيل امتى", "امتى فترة التسجيل", "متى أسجل",
+    "الاد والدروب", "الاد اند دروب", "ادد اند دروب", "الأد اند دروب",
     # Generic finals/exams — LLM picks upcoming vs past based on today's date
     "when are final exams", "when are finals", "when are exams",
     "final exam dates", "finals schedule", "when are my exams",
