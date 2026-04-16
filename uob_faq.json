@@ -580,8 +580,8 @@
         "العيد الصغير امتى",
         "امتى العيد"
       ],
-      "answer_en": "Eid Al-Fitr holiday: Friday, 20 March to Sunday, 22 March 2026. Note: date depends on moon sighting.",
-      "answer_ar": "إجازة عيد الفطر المبارك من الجمعة 20 مارس إلى الأحد 22 مارس 2026. ملاحظة: مرتبطة برؤية الهلال."
+      "answer_en": "Eid Al-Fitr 2026: Friday 20 – Sunday 22 March 2026 (already past).\n\nNext upcoming Eid: Eid Al-Adha — Wednesday 27 to Friday 29 May 2026 (Day of Arafah: Tuesday 26 May)*.\n\n* Dates depend on moon sighting and may shift ±1 day.",
+      "answer_ar": "عيد الفطر 2026: الجمعة 20 – الأحد 22 مارس 2026 (انتهى).\n\nالعيد القادم: عيد الأضحى — الأربعاء 27 إلى الجمعة 29 مايو 2026 (يوم عرفة: الثلاثاء 26 مايو)*.\n\n* التواريخ مرتبطة برؤية الهلال وقد تتحول يوماً."
     },
     {
       "id": "eid_adha",
@@ -786,8 +786,8 @@
         "ابي كل الإجازات",
         "الإجازات كلها"
       ],
-      "answer_en": "Holidays for 2025/2026: Prophet's Birthday (4 Sep 2025)*, National Day & Accession Day (16-17 Dec 2025), New Year's Day (1 Jan 2026), Ramadan start (18 Feb 2026)*, Eid Al-Fitr (20-22 Mar 2026)*, Labour Day (1 May 2026), Day of Arafah (26 May 2026)*, Eid Al-Adha (27-29 May 2026)*, Islamic New Year (16 Jun 2026)*, Ashura (25-26 Jun 2026)*, Prophet's Birthday (25 Aug 2026)*. Dates with * depend on moon sighting.",
-      "answer_ar": "إجازات 2025/2026: المولد النبوي (4 سبتمبر 2025)*، العيد الوطني وعيد الجلوس (16-17 ديسمبر 2025)، رأس السنة الميلادية (1 يناير 2026)، رمضان (18 فبراير 2026)*، عيد الفطر (20-22 مارس 2026)*، يوم العمال (1 مايو 2026)، يوم عرفة (26 مايو 2026)*، عيد الأضحى (27-29 مايو 2026)*، رأس السنة الهجرية (16 يونيو 2026)*، عاشوراء (25-26 يونيو 2026)*، المولد النبوي (25 أغسطس 2026)*."
+      "answer_en": "2025/2026 holidays — ✓ past | → upcoming (as of Apr 2026):\n✓ Prophet's Birthday — 4 Sep 2025*\n✓ National Day & Accession Day — 16-17 Dec 2025\n✓ New Year's Day — 1 Jan 2026\n✓ Ramadan start — 18 Feb 2026*\n✓ Eid Al-Fitr — 20-22 Mar 2026*\n→ Labour Day — 1 May 2026\n→ Day of Arafah — 26 May 2026*\n→ Eid Al-Adha — 27-29 May 2026*\n→ Islamic New Year — 16 Jun 2026*\n→ Ashura — 25-26 Jun 2026*\n→ Prophet's Birthday — 25 Aug 2026*\n\nDates with * depend on moon sighting and may shift ±1 day.",
+      "answer_ar": "إجازات 2025/2026 — ✓ انتهت | → قادمة (اعتباراً من أبريل 2026):\n✓ المولد النبوي — 4 سبتمبر 2025*\n✓ العيد الوطني وعيد الجلوس — 16-17 ديسمبر 2025\n✓ رأس السنة الميلادية — 1 يناير 2026\n✓ بداية رمضان — 18 فبراير 2026*\n✓ عيد الفطر — 20-22 مارس 2026*\n→ يوم العمال — 1 مايو 2026\n→ يوم عرفة — 26 مايو 2026*\n→ عيد الأضحى — 27-29 مايو 2026*\n→ رأس السنة الهجرية — 16 يونيو 2026*\n→ عاشوراء — 25-26 يونيو 2026*\n→ المولد النبوي — 25 أغسطس 2026*\n\nالتواريخ المُعلَّمة بـ * مرتبطة برؤية الهلال وقد تتحول يوماً."
     },
     {
       "id": "last_day_drop_refund",

@@ -104,24 +104,76 @@ export default function App() {
       textareaRef.current.style.height = "auto";
     }
 
+    // Add an empty bot message we'll fill in token by token
+    setMessages((prev) => [...prev, { role: "bot", text: "", source: null, warning: null }]);
+
     try {
-      const res = await fetch(`${API}/chat`, {
+      const res = await fetch(`${API}/chat/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: trimmed, session_id: SESSION_ID }),
       });
 
-      const data = await res.json();
-
       if (res.status === 429) {
+        const data = await res.json();
+        setMessages((prev) => prev.slice(0, -1));
         setRateError(data.detail);
-      } else if (!res.ok) {
-        addBotMessage(data.detail || "Something went wrong. Please try again.");
-      } else {
-        addBotMessage(data.response, data.source, data.warning);
+        setLoading(false);
+        return;
+      }
+
+      if (!res.ok) {
+        const data = await res.json();
+        setMessages((prev) => {
+          const msgs = [...prev];
+          msgs[msgs.length - 1] = { role: "bot", text: data.detail || "Something went wrong. Please try again." };
+          return msgs;
+        });
+        setLoading(false);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop(); // keep incomplete last line in buffer
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === "token") {
+              setMessages((prev) => {
+                const msgs = [...prev];
+                const last = msgs[msgs.length - 1];
+                msgs[msgs.length - 1] = { ...last, text: last.text + data.text };
+                return msgs;
+              });
+            } else if (data.type === "done") {
+              setMessages((prev) => {
+                const msgs = [...prev];
+                const last = msgs[msgs.length - 1];
+                msgs[msgs.length - 1] = { ...last, source: data.source, warning: data.warning };
+                return msgs;
+              });
+            }
+          } catch {
+            // skip malformed SSE event
+          }
+        }
       }
     } catch {
-      addBotMessage("Could not reach the server. Make sure the API is running.");
+      setMessages((prev) => {
+        const msgs = [...prev];
+        msgs[msgs.length - 1] = { role: "bot", text: "Could not reach the server. Make sure the API is running." };
+        return msgs;
+      });
     }
 
     setLoading(false);

@@ -229,7 +229,7 @@ DATE_SENSITIVE_PATTERNS = (
     "currently open", "currently closed", "still ongoing",
     "already started", "already ended", "already passed",
     "can i still", "is it too late", "too late to",
-    "هل فاتني", "هل انتهى", "هل بدأ", "هل لا يزال",
+    "هل فاتني", "هل انتهى", "هل بدأ", "هل لا يزال", "هل مازال", "ما زال",
     "هل التسجيل مفتوح", "كم يوم", "هل فات",
     # Generic "when is X" for recurring semester events — needs LLM to pick the right semester
     "is registration open", "is registration closed",
@@ -248,6 +248,16 @@ DATE_SENSITIVE_PATTERNS = (
     "متى النتائج", "متى تظهر النتائج", "متى تُعلن النتائج", "متى يُعلن",
     "نتائج الامتحانات", "إعلان النتائج", "النتائج امتى", "امتى النتائج",
     "متى أعرف نتيجتي", "نتيجتي امتى", "متى تطلع النتائج", "امتى تطلع النتائج",
+    # Eid / holiday — LLM must return upcoming eid, not the already-past one
+    "when is eid", "eid break", "eid holiday", "next eid", "upcoming eid",
+    "eid al fitr", "eid al adha", "when is the eid",
+    "upcoming holiday", "next holiday", "when is the next holiday",
+    "إجازة عيد", "متى العيد", "العيد امتى", "امتى العيد",
+    "عيد الفطر امتى", "امتى عيد الفطر", "عيد الأضحى امتى", "امتى عيد الأضحى",
+    "الإجازة الجاية", "الإجازة القادمة", "إيش الإجازة الجاية",
+    # Arabic colloquial time-relative patterns
+    "الحين", "هالفترة", "باقي كم", "بعد كم", "لسا", "لحين",
+    "ودي أعرف إذا", "أبي أعرف إذا", "هل لا يزال مفتوح",
 )
 
 
