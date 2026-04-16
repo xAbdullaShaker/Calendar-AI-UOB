@@ -46,27 +46,10 @@ DATE_SENSITIVE_PATTERNS = (
     "الحذف والإضافة امتى", "امتى الحذف والإضافة", "متى الحذف والإضافة",
     "فترة التسجيل امتى", "امتى فترة التسجيل", "متى أسجل",
     "الاد والدروب", "الاد اند دروب", "ادد اند دروب", "الأد اند دروب",
-    # Generic finals/exams — LLM picks upcoming vs past based on today's date
-    "when are final exams", "when are finals", "when are exams",
-    "final exam dates", "finals schedule", "when are my exams",
-    "exam period", "exam dates", "when do finals",
-    "متى الامتحانات النهائية", "متى الامتحانات", "الامتحانات النهائية",
-    "موعد الامتحانات", "الامتحانات امتى", "امتى الامتحانات",
-    "متى الفاينل", "الفاينل امتى", "موعد الفاينل", "الفاينلز",
-    # Generic results — LLM picks upcoming vs past based on today's date
-    "when are results", "when do results", "when do grades", "when are grades",
-    "results announced", "grades released", "results announcement",
-    "grade release", "when will results", "when will grades",
-    "متى النتائج", "متى تظهر النتائج", "متى تُعلن النتائج", "متى يُعلن",
-    "نتائج الامتحانات", "إعلان النتائج", "النتائج امتى", "امتى النتائج",
-    "متى أعرف نتيجتي", "نتيجتي امتى", "متى تطلع النتائج", "امتى تطلع النتائج",
-    # Eid / holiday — LLM returns upcoming, not already-past
-    "when is eid", "eid break", "eid holiday", "next eid", "upcoming eid",
-    "eid al fitr", "eid al adha", "when is the eid",
-    "upcoming holiday", "next holiday", "when is the next holiday",
-    "إجازة عيد", "متى العيد", "العيد امتى", "امتى العيد",
-    "عيد الفطر امتى", "امتى عيد الفطر", "عيد الأضحى امتى", "امتى عيد الأضحى",
-    "الإجازة الجاية", "الإجازة القادمة", "إيش الإجازة الجاية",
+    # NOTE: Generic finals/results/eid questions are intentionally NOT here.
+    # Those FAQ entries already list all semesters with past/upcoming labels,
+    # so routing them to RAG only causes hallucination and inconsistency.
+    # Only status-check variants (did I miss, is it still open, etc.) go to LLM.
     # Arabic colloquial time-relative patterns (Gulf / Khaleeji dialect)
     # "right now / currently"
     "الحين", "الآن", "هالفترة", "هذي الفترة", "هالوقت", "هذا الوقت",
