@@ -115,18 +115,28 @@ export default function App() {
       });
 
       if (res.status === 429) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         setMessages((prev) => prev.slice(0, -1));
-        setRateError(data.detail);
+        setRateError(data.detail || "Too many requests. Please wait a moment.");
+        setLoading(false);
+        return;
+      }
+
+      if (res.status === 400) {
+        const data = await res.json().catch(() => ({}));
+        setMessages((prev) => {
+          const msgs = [...prev];
+          msgs[msgs.length - 1] = { role: "bot", text: data.detail || "Please enter a valid question." };
+          return msgs;
+        });
         setLoading(false);
         return;
       }
 
       if (!res.ok) {
-        const data = await res.json();
         setMessages((prev) => {
           const msgs = [...prev];
-          msgs[msgs.length - 1] = { role: "bot", text: data.detail || "Something went wrong. Please try again." };
+          msgs[msgs.length - 1] = { role: "bot", text: "Something went wrong. Please try again. / حدث خطأ، يرجى المحاولة مجدداً." };
           return msgs;
         });
         setLoading(false);
