@@ -1,7 +1,7 @@
 # UOB Calendar AI
 
 A bilingual (Arabic + English) AI assistant for the University of Bahrain academic calendar 2025/2026.
-Built with a hybrid FAQ + RAG pipeline — common questions are answered instantly from a pre-written FAQ, rare or complex questions fall back to a retrieval-augmented LLM that only sees the 4 most relevant calendar chunks.
+Built with a hybrid FAQ + RAG pipeline — common questions are answered instantly from a pre-written FAQ, rare or time-relative questions fall back to a streaming LLM that only sees the 4 most relevant calendar chunks.
 
 Includes a React web UI with UOB branding and a FastAPI backend.
 
@@ -9,14 +9,17 @@ Includes a React web UI with UOB branding and a FastAPI backend.
 
 ## Features
 
-- **Bilingual** — detects Arabic vs English automatically using character ratio (not just any-match)
-- **FAQ-first** — 37 FAQ entries with 500+ question variants handle ~90% of questions with zero LLM cost
+- **Bilingual** — detects Arabic vs English automatically; supports Gulf/Khaleeji dialect question variants
+- **FAQ-first** — 37 FAQ entries with 650+ question variants handle ~90% of questions with zero LLM cost
+- **Streaming responses** — LLM answers type out token by token via SSE; FAQ answers appear instantly
+- **Date-aware routing** — 60+ date-sensitive patterns intercept questions like "is registration open?", "did I miss it?", "الحين", "لسا", "الجاي" and route them to the LLM instead of returning a static FAQ answer
+- **Upcoming vs past** — bot correctly returns upcoming events, not already-past ones (e.g. asking "when are finals?" in April 2026 returns June 2026 finals, not December 2025)
 - **RAG fallback** — only the top 4 relevant calendar chunks are sent to the LLM, never the full document
-- **Conversation memory** — remembers last 10 turns; detects follow-up questions and expands the embedding query
-- **Date-aware** — injects today's date and current academic period into every LLM call so answers like "is registration open now?" and "how many days until finals?" are grounded in the actual date
+- **Conversation memory** — remembers last 10 turns; detects follow-up questions and expands the embed query
 - **Input sanitization** — truncates at 500 chars, strips control characters, rejects gibberish
-- **Rate limiting** — max 10 messages per 60-second rolling window per session
-- **React web UI** — chat interface with UOB navy/gold theme, suggestion chips, EN/AR language toggle, bot avatar
+- **Rate limiting** — max 30 messages per 10-minute rolling window per session
+- **Error handling** — graceful fallback if Cohere API is unavailable; user-friendly error messages
+- **React web UI** — chat interface with UOB navy/gold theme, suggestion chips, EN/AR toggle, typing indicator, bot avatar
 
 ---
 
@@ -44,8 +47,7 @@ Includes a React web UI with UOB branding and a FastAPI backend.
                     │  sanitize_input()        │
                     │  · truncate > 500 chars  │
                     │  · strip control chars   │
-                    │  · reject gibberish/     │
-                    │    single-word > 15 chars│
+                    │  · reject gibberish      │
                     └────────────┬────────────┘
                                  │
                                  ↓
@@ -58,18 +60,8 @@ Includes a React web UI with UOB branding and a FastAPI backend.
                                  ↓
                     ┌─────────────────────────┐
                     │  is_followup()?          │
-                    │  · starts with pronoun   │
-                    │  · starts with phrase    │
-                    │  · ≤ 3 words             │
                     │  Yes → prepend previous  │
                     │  question to embed query │
-                    └────────────┬────────────┘
-                                 │
-                                 ↓
-                    ┌─────────────────────────┐
-                    │  is_arabic()             │
-                    │  Arabic chars > 50% of   │
-                    │  total alpha chars → AR  │
                     └────────────┬────────────┘
                                  │
                                  ↓
@@ -84,12 +76,14 @@ Includes a React web UI with UOB branding and a FastAPI backend.
                     ↓                         │
         ┌───────────────────────┐             │
         │  is_date_sensitive()?  │             │
+        │  60+ patterns including│             │
         │  · "did i miss"        │             │
         │  · "is it open"        │             │
-        │  · "can i still"       │             │
-        │  · "is it too late"    │             │
-        │  · "how many days"     │             │
-        │  · Arabic equivalents  │             │
+        │  · "when are finals"   │             │
+        │  · "when are results"  │             │
+        │  · "when is eid"       │             │
+        │  · "الحين" "لسا"       │             │
+        │  · "الجاي" "خلص"      │             │
         └──────┬────────────────┘             │
           No   │        Yes                   │
           │    │         └────────────────────┤
@@ -97,47 +91,49 @@ Includes a React web UI with UOB branding and a FastAPI backend.
   ┌────────────────┐          ┌──────────────────────────┐
   │ Pre-written FAQ│          │  Rank 73 calendar chunks  │
   │ answer returned│          │  Send top 4 to LLM with:  │
-  │ AR → answer_ar │          │  · today's date + period  │
-  │ EN → answer_en │          │  · conversation history   │
-  └────────────────┘          │  · language instruction   │
+  │ instantly      │          │  · today's date + period  │
+  │ AR → answer_ar │          │  · conversation history   │
+  │ EN → answer_en │          │  · language instruction   │
+  └────────────────┘          │  Stream tokens via SSE ──→│
                               └──────────────────────────┘
 ```
 
-### Why `is_date_sensitive()` matters
+---
 
-FAQ answers are static pre-written strings — they have no knowledge of today's date.
-Without this check, a question like *"did I miss the registration?"* could match a FAQ entry
-and return a 2025 date with zero context about whether it has passed.
+## Date-Sensitive Routing
 
-`is_date_sensitive()` intercepts those questions before the FAQ answer is returned and forces
-them through the LLM, which receives today's date and can say:
-> "Yes, you missed it — Second Semester registration closed 62 days ago (12 Feb 2026)."
+FAQ answers are static strings — they have no knowledge of today's date.
+Without `is_date_sensitive()`, a question like *"when are the final exams?"* in April 2026 would match the `fall_finals` FAQ entry and return December 2025 dates — already past.
+
+The function checks for 60+ patterns across three categories:
+
+| Category | Examples |
+|---|---|
+| Status checks | "is it open", "can i still", "did I miss", "is it too late" |
+| Generic multi-semester | "when are finals", "when are results", "when is eid" |
+| Gulf Arabic colloquial | "الحين", "لسا", "الجاي", "خلص", "باقي كم", "فاتني", "هالفترة" |
+
+When triggered, the question is routed to the LLM which receives today's date and current academic period and can reason: *"finals are upcoming in June 2026"* rather than returning a hardcoded past answer.
 
 ---
 
 ## Date Awareness
 
-The bot knows today's date and uses it to answer time-relative questions like:
-- "Did I miss the registration deadline?"
-- "How many days until finals?"
-- "Is the drop period open right now?"
-
-### How it works
-
-Every LLM call has a date context block injected directly into the message:
+Every LLM call has a date context block injected into the message:
 
 ```
-Today is: Tuesday, 15 April 2026
+Today is: Wednesday, 16 April 2026
 Current academic period: Second Semester 2025/2026 (classes in progress)
 
 CRITICAL RULES:
 - You KNOW today's date. Never say "if today is..." — state facts directly.
-- Say exactly: "Yes, you missed it — the deadline was X days ago"
-  or "No, it opens in X days"
-  or "Yes, it is open right now until [date]"
+- NEVER mention today's date in your response. Use natural relative language:
+  'upcoming', 'already past', 'opens in X days', 'deadline has passed'.
 ```
 
-The `get_date_context()` function calculates the current period in real-time by comparing today's date against all UOB semester boundaries:
+The LLM answers relative to today without ever echoing the date back to the user.
+
+### Academic Period Boundaries
 
 | Period | Start | End |
 |--------|-------|-----|
@@ -148,25 +144,23 @@ The `get_date_context()` function calculates the current period in real-time by 
 | Summer Session (classes) | 1 Jul 2026 | 7 Aug 2026 |
 | Summer Session (finals) | 8 Aug 2026 | 14 Aug 2026 |
 
-### Example
+---
 
-User asks: **"Did I miss the registration deadline?"** on 15 April 2026
+## Streaming
 
-The bot receives:
+The `/chat/stream` endpoint returns a Server-Sent Events (SSE) stream:
+
 ```
-Today is: Tuesday, 15 April 2026
-Current academic period: Second Semester 2025/2026 (classes in progress)
-User question: Did I miss the registration deadline?
+data: {"type": "token", "text": "الامتحانات"}
+data: {"type": "token", "text": " النهائية"}
+...
+data: {"type": "done", "source": "RAG (date-sensitive) — 73%", "warning": null}
 ```
 
-Bot answers:
-> Yes, you missed the Second Semester registration period. It ran from 1–12 February 2026 — that ended 62 days ago.
+- **LLM path** — tokens stream one by one as the model generates them
+- **FAQ path** — full answer sent as a single `token` event immediately (no LLM latency)
 
-### Why injected into the message, not the system prompt
-
-The system prompt tells the LLM: *"Only use calendar data in the `<uob_data>` tags."*
-If the date was placed in the system prompt, the LLM would treat it as outside the allowed data and ignore it.
-By injecting it into the message itself, the LLM processes it as part of the question — it cannot ignore it.
+The frontend fills the bot message word by word in real time.
 
 ---
 
@@ -174,11 +168,12 @@ By injecting it into the message itself, the LLM processes it as part of the que
 
 | | Pure RAG | This Project |
 |---|---|---|
-| Every question uses LLM | Yes | No — FAQ answers ~90% |
+| Every question uses LLM | Yes | No — FAQ handles ~90% |
 | LLM context | Full document | Top 4 chunks only |
 | Same question = same answer | LLM may rephrase | Always identical (FAQ) |
 | Hallucination risk on dates | Yes | No for FAQ; minimized for RAG |
 | Cost per common question | ~$0.001 | ~$0.000001 (embed only) |
+| Response speed | 1-3s always | Instant for FAQ hits |
 
 ---
 
@@ -186,55 +181,60 @@ By injecting it into the message itself, the LLM processes it as part of the que
 
 | File | What it does |
 |------|-------------|
-| `chat.py` | CLI chatbot — FAQ match first, RAG on fallback |
-| `api.py` | FastAPI backend — wraps chat.py logic as a REST API |
-| `uob_faq.json` | 37 Q&A entries with 658 Arabic + English question variants |
-| `uob_calendar.md` | Full academic calendar source |
-| `embed_faq.py` | Embeds FAQ questions — run once, re-run after editing uob_faq.json |
+| `api.py` | FastAPI backend — FAQ match, streaming SSE endpoint, RAG fallback, rate limiting |
+| `chat.py` | CLI chatbot — same logic as api.py for terminal use |
+| `uob_faq.json` | 37 Q&A entries with 650+ Arabic + English question variants |
+| `uob_calendar.md` | Full academic calendar source document |
+| `embed_faq.py` | Embeds FAQ questions — run once, re-run after editing `uob_faq.json` |
 | `embed_calendar.py` | Chunks calendar into 73 events and embeds each — run once |
-| `eval_threshold.py` | Evaluates FAQ similarity threshold across 35 test cases |
-| `faq_embeddings.json` | Generated by embed_faq.py |
-| `calendar_embeddings.json` | Generated by embed_calendar.py |
+| `eval_threshold.py` | Evaluates FAQ similarity threshold across test cases |
+| `faq_embeddings.json` | Generated by `embed_faq.py` — gitignored, must generate locally |
+| `calendar_embeddings.json` | Generated by `embed_calendar.py` — gitignored, must generate locally |
 | `frontend/` | React + Vite web UI |
 | `requirements.txt` | Python dependencies |
-| `.env` | Cohere API key — never pushed to GitHub |
+| `.env` | Cohere API key — never committed |
 
 ---
 
 ## Setup
 
-### Backend (CLI)
+### 1. Install dependencies
 
 ```bash
 pip install -r requirements.txt
-
-# Add your Cohere API key
-cp .env.example .env
-
-# Embed FAQ and calendar (once)
-python embed_faq.py
-python embed_calendar.py
-
-# Start CLI chatbot
-python chat.py
 ```
 
-### Web UI
+### 2. Configure API key
+
+Create a `.env` file:
+```
+COHERE_API_KEY=your_key_here
+```
+
+### 3. Generate embeddings (once)
 
 ```bash
-# Terminal 1 — backend
-python -m uvicorn api:app --reload --port 8000
+python embed_faq.py
+python embed_calendar.py
+```
 
-# Terminal 2 — frontend
+Re-run `embed_faq.py` any time you edit `uob_faq.json`.
+
+### 4. Start the backend
+
+```bash
+python -m uvicorn api:app --reload --port 8001
+```
+
+### 5. Start the frontend
+
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Then open `http://localhost:5173` (or whichever port Vite picks).
-
-Re-run `embed_faq.py` after editing `uob_faq.json`.
-Re-run `embed_calendar.py` after editing `uob_calendar.md`.
+Open `http://localhost:5173`
 
 ---
 
@@ -242,10 +242,11 @@ Re-run `embed_calendar.py` after editing `uob_calendar.md`.
 
 ```
 Embeddings:  Cohere embed-multilingual-v3.0
-LLM:         Cohere command-a-03-2025
+LLM:         Cohere command-r-plus-08-2024
+Streaming:   Server-Sent Events (SSE) via FastAPI StreamingResponse
 Backend:     FastAPI + uvicorn
 Frontend:    React + Vite
-Matching:    Cosine similarity on flat JSON
+Matching:    Cosine similarity (numpy) on flat JSON
 RAG:         Top-4 chunk retrieval per query
 Language:    Arabic/Latin character ratio (>50% Arabic → AR)
 Storage:     Flat JSON — no database needed
