@@ -59,9 +59,9 @@ def get_date_context():
         f"Current academic period: {current_period}\n\n"
         f"CRITICAL RULES for time-relative questions:\n"
         f"- You KNOW today's date. Never say 'if today is...' or 'assuming today is...'. State facts directly.\n"
+        f"- NEVER mention today's date in your response. Do not write phrases like 'today is April 16' or 'as of April 2026'. The user already knows the date.\n"
+        f"- Use natural relative language instead: 'upcoming', 'already past', 'currently open', 'deadline has passed', 'opens in X days', 'closes in X days'.\n"
         f"- Compare any deadline/event date against {today_str} and give a definitive answer.\n"
-        f"- Say exactly: 'Yes, you missed it — the deadline was X days ago' or 'No, it opens in X days' or 'Yes, it is open right now until [date]'.\n"
-        f"- For ongoing windows, say whether today ({today.strftime('%d %b %Y')}) falls inside, before, or after.\n"
         f"- For moon-sighting dates (*), note the ±1 day uncertainty may affect the answer.\n"
         f"- For non-time-relative questions ('when does X start?'), answer normally without forcing a countdown.\n"
     )
