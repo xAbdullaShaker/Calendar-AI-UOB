@@ -1,5 +1,7 @@
 # UOB Calendar AI
 
+**Live demo:** https://xabdullashaker.github.io/Calendar-AI-UOB/
+
 A bilingual (Arabic + English) AI assistant for the University of Bahrain academic calendar 2025/2026.
 Built with a hybrid FAQ + RAG pipeline — common questions are answered instantly from a pre-written FAQ, rare or time-relative questions fall back to a streaming LLM that only sees the 4 most relevant calendar chunks.
 
