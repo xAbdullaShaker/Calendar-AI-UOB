@@ -93,8 +93,8 @@
         "الفصل الأول امتى يبدأ",
         "متى اليوم الأول"
       ],
-      "answer_en": "Semester start dates for 2025/2026:\n• First Semester: Sun 7 Sep 2025 (undergrad) / Sun 14 Sep 2025 (graduate) — already started\n• Second Semester: Tue 3 Feb 2026 — already started\n• Summer Session: Wed 1 Jul 2026 — upcoming\n\nAs of April 2026, the Second Semester is currently in progress. The next upcoming semester is Summer Session starting 1 July 2026.",
-      "answer_ar": "مواعيد بداية الفصول الدراسية 2025/2026:\n• الفصل الأول: الأحد 7 سبتمبر 2025 (بكالوريوس) / الأحد 14 سبتمبر 2025 (دراسات عليا) — انتهى\n• الفصل الثاني: الثلاثاء 3 فبراير 2026 — جارٍ حالياً\n• الفصل الصيفي: الأربعاء 1 يوليو 2026 — قادم\n\nاعتباراً من أبريل 2026، الفصل الثاني جارٍ حالياً. الفصل القادم هو الفصل الصيفي الذي يبدأ في 1 يوليو 2026."
+      "answer_en": "Semester start dates for 2025/2026:\n• First Semester: Sun 7 Sep 2025 (undergrad) / Sun 14 Sep 2025 (graduate) — past\n• Second Semester: Tue 3 Feb 2026 — in progress\n• Summer Session: Wed 1 Jul 2026 — upcoming",
+      "answer_ar": "مواعيد بداية الفصول الدراسية 2025/2026:\n• الفصل الأول: الأحد 7 سبتمبر 2025 (بكالوريوس) / الأحد 14 سبتمبر 2025 (دراسات عليا) — انتهى\n• الفصل الثاني: الثلاثاء 3 فبراير 2026 — جارٍ حالياً\n• الفصل الصيفي: الأربعاء 1 يوليو 2026 — قادم"
     },
     {
       "id": "spring_start",
@@ -125,8 +125,8 @@
         "متى نرجع بعد الإجازة",
         "متى تبدأ دراسة الربيع"
       ],
-      "answer_en": "The Second Semester began on Tuesday, 3 February 2026 for both undergraduate and graduate students. It is currently in progress (as of April 2026). The next semester is Summer Session, starting Wednesday 1 July 2026.",
-      "answer_ar": "بدأ الفصل الثاني يوم الثلاثاء 3 فبراير 2026 للمرحلة الجامعية الأولى والدراسات العليا. الفصل الثاني جارٍ حالياً (أبريل 2026). الفصل القادم هو الفصل الصيفي الذي يبدأ في الأربعاء 1 يوليو 2026."
+      "answer_en": "The Second Semester began on Tuesday, 3 February 2026 for both undergraduate and graduate students. It is currently in progress. The next semester is Summer Session, starting Wednesday 1 July 2026.",
+      "answer_ar": "بدأ الفصل الثاني يوم الثلاثاء 3 فبراير 2026 للمرحلة الجامعية الأولى والدراسات العليا. الفصل الثاني جارٍ حالياً. الفصل القادم هو الفصل الصيفي الذي يبدأ في الأربعاء 1 يوليو 2026."
     },
     {
       "id": "summer_start",
