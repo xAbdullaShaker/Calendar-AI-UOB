@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from core import (
     co,
+    USE_DB,
     SIMILARITY_THRESHOLD, MAX_HISTORY,
     sanitize_input, is_arabic, build_embed_query,
     find_best_faq_match, retrieve_top_chunks,
@@ -76,10 +77,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-faq_embeddings = load_embeddings()
 faq_answers = load_faq_answers()
-calendar_chunks = load_calendar_chunks()
 rate_limiter = RateLimiter()
+
+if USE_DB:
+    faq_embeddings = None
+    calendar_chunks = None
+    print("pgvector mode: embeddings served from PostgreSQL")
+else:
+    faq_embeddings = load_embeddings()
+    calendar_chunks = load_calendar_chunks()
+    print(f"numpy mode: {len(faq_embeddings)} FAQ entries, {len(calendar_chunks)} calendar chunks loaded")
 
 # In-memory session histories: { session_id: [turns] }
 sessions: dict[str, list] = {}

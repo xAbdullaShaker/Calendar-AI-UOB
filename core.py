@@ -16,6 +16,9 @@ load_dotenv()
 
 co = cohere.Client(os.getenv("COHERE_API_KEY"))
 
+# Use pgvector DB when DATABASE_URL is set; fall back to numpy JSON search otherwise.
+USE_DB = bool(os.getenv("DATABASE_URL"))
+
 SIMILARITY_THRESHOLD = 0.55
 TOP_K_CHUNKS = 4
 MAX_HISTORY = 10
@@ -231,10 +234,16 @@ def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
-def find_best_faq_match(question_embedding, faq_embeddings):
+def find_best_faq_match(question_embedding, faq_embeddings=None):
+    """Return (entry_dict, score). Uses pgvector DB if DATABASE_URL is set."""
+    if USE_DB:
+        from db import find_best_faq_match_db
+        faq_id, score = find_best_faq_match_db(question_embedding)
+        return {"id": faq_id}, score
+    # numpy fallback (local dev without DB)
     best_score = 0
     best_entry = None
-    for entry in faq_embeddings:
+    for entry in (faq_embeddings or []):
         for emb in entry["embeddings"]:
             score = cosine_similarity(question_embedding, emb)
             if score > best_score:
@@ -243,10 +252,15 @@ def find_best_faq_match(question_embedding, faq_embeddings):
     return best_entry, best_score
 
 
-def retrieve_top_chunks(question_embedding, calendar_chunks, top_k=TOP_K_CHUNKS):
+def retrieve_top_chunks(question_embedding, calendar_chunks=None, top_k=TOP_K_CHUNKS):
+    """Return top_k chunk texts. Uses pgvector DB if DATABASE_URL is set."""
+    if USE_DB:
+        from db import retrieve_top_chunks_db
+        return retrieve_top_chunks_db(question_embedding, top_k)
+    # numpy fallback
     scored = [
         (cosine_similarity(question_embedding, c["embedding"]), c["chunk"])
-        for c in calendar_chunks
+        for c in (calendar_chunks or [])
     ]
     scored.sort(key=lambda x: x[0], reverse=True)
     return [chunk for _, chunk in scored[:top_k]]
