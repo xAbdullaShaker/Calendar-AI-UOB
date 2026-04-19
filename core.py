@@ -49,6 +49,7 @@ DATE_SENSITIVE_PATTERNS = (
     "الحذف والإضافة امتى", "امتى الحذف والإضافة", "متى الحذف والإضافة",
     "فترة التسجيل امتى", "امتى فترة التسجيل", "متى أسجل",
     "الاد والدروب", "الاد والدرووب", "الاد اند دروب", "ادد اند دروب", "الأد اند دروب",
+    "متى الدروب", "الدروب امتى", "امتى الدروب",
     # NOTE: Generic finals/results/eid questions are intentionally NOT here.
     # Those FAQ entries already list all semesters with past/upcoming labels,
     # so routing them to RAG only causes hallucination and inconsistency.
