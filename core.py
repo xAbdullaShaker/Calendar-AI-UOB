@@ -47,7 +47,9 @@ DATE_SENSITIVE_PATTERNS = (
     "registration period", "when can i register", "when do i register",
     "متى التسجيل", "التسجيل امتى", "امتى التسجيل",
     "الحذف والإضافة امتى", "امتى الحذف والإضافة", "متى الحذف والإضافة",
-    "فترة التسجيل امتى", "امتى فترة التسجيل", "متى أسجل",
+    "فترة التسجيل امتى", "امتى فترة التسجيل", "متى أسجل", "متى فترة التسجيل",
+    # Withdrawal — route to LLM so it picks the correct current semester
+    "الانسحاب من المقررات", "آخر موعد الانسحاب", "موعد الانسحاب",
     "الاد والدروب", "الاد والدرووب", "الاد اند دروب", "ادد اند دروب", "الأد اند دروب",
     "متى الدروب", "الدروب امتى", "امتى الدروب",
     # NOTE: Generic finals/results/eid questions are intentionally NOT here.
