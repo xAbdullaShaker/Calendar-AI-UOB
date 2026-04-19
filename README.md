@@ -164,6 +164,21 @@ The frontend fills the bot message word by word in real time.
 
 ---
 
+## Why pgvector Instead of numpy?
+
+**Before (numpy):**
+- On every server start, all embeddings are loaded from JSON files into RAM
+- Every question is compared against every vector one by one in a Python loop
+
+**After (pgvector):**
+- Vectors are stored permanently in a PostgreSQL database
+- Search is a single SQL query using the `<=>` cosine distance operator — no Python loop
+- Faster, no RAM overhead, data persists even if the server restarts
+
+The app detects automatically: if `DATABASE_URL` is set it uses pgvector, otherwise it falls back to the numpy/JSON mode for local development.
+
+---
+
 ## Why Not Pure RAG?
 
 | | Pure RAG | This Project |
