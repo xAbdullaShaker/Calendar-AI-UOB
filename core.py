@@ -336,7 +336,7 @@ def ask_llm_stream(question, context_chunks, history, arabic=False):
             {"role": "CHATBOT", "message": turn["answer"]},
         )
     ]
-    lang_instruction = "[IMPORTANT: Respond in Arabic only.]\n" if arabic else ""
+    lang_instruction = "[IMPORTANT: Respond in Arabic only.]\n" if arabic else "[IMPORTANT: Respond in English only. Do not use Arabic.]\n"
     message = lang_instruction + get_date_context() + "User question: " + question
     try:
         stream = co.chat_stream(
