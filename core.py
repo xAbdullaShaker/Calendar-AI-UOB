@@ -48,6 +48,10 @@ DATE_SENSITIVE_PATTERNS = (
     "متى التسجيل", "التسجيل امتى", "امتى التسجيل",
     "الحذف والإضافة امتى", "امتى الحذف والإضافة", "متى الحذف والإضافة",
     "فترة التسجيل امتى", "امتى فترة التسجيل", "متى أسجل", "متى فترة التسجيل",
+    # Generic last/first day of classes — date-sensitive, LLM picks correct semester
+    "اخر يوم دراسي", "آخر يوم دراسي", "اخر يوم في الدراسة", "آخر يوم في الدراسة",
+    "اخر يوم محاضرات", "آخر يوم محاضرات", "اخر يوم دوام", "آخر يوم دوام",
+    "last day of classes", "last day of school", "last day of semester",
     # Withdrawal — route to LLM so it picks the correct current semester
     "withdrawal", "withdraw", "course withdrawal", "withdrawal deadline",
     "last day to withdraw", "last day to drop", "drop with w", "w grade",
