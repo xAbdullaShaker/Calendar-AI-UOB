@@ -19,7 +19,7 @@ co = cohere.Client(os.getenv("COHERE_API_KEY"))
 # Use pgvector DB when DATABASE_URL is set; fall back to numpy JSON search otherwise.
 USE_DB = bool(os.getenv("DATABASE_URL"))
 
-SIMILARITY_THRESHOLD = 0.55
+SIMILARITY_THRESHOLD = 0.70
 TOP_K_CHUNKS = 4
 MAX_HISTORY = 10
 
@@ -51,7 +51,11 @@ DATE_SENSITIVE_PATTERNS = (
     # Generic last/first day of classes — date-sensitive, LLM picks correct semester
     "اخر يوم دراسي", "آخر يوم دراسي", "اخر يوم في الدراسة", "آخر يوم في الدراسة",
     "اخر يوم محاضرات", "آخر يوم محاضرات", "اخر يوم دوام", "آخر يوم دوام",
+    "اول يوم دوام", "أول يوم دوام", "اول يوم جامعه", "اول يوم جامعة",
+    "أول يوم جامعه", "أول يوم جامعة", "اول يوم الدوام", "أول يوم الدوام",
+    "اول يوم دراسي", "أول يوم دراسي", "اول يوم الدراسة", "أول يوم الدراسة",
     "last day of classes", "last day of school", "last day of semester",
+    "first day of classes", "first day of school", "first day of semester",
     # Withdrawal — route to LLM so it picks the correct current semester
     "withdrawal", "withdraw", "course withdrawal", "withdrawal deadline",
     "last day to withdraw", "last day to drop", "drop with w", "w grade",
@@ -187,6 +191,19 @@ def get_date_context():
 
 # ── Text utilities ────────────────────────────────────────────────────────────
 
+def normalize_arabic(text):
+    """Normalize Arabic spelling variations before embedding."""
+    # Alef variants (أ إ آ) → ا
+    text = re.sub(r'[أإآ]', 'ا', text)
+    # Taa marbuta (ة) → ه
+    text = re.sub(r'ة', 'ه', text)
+    # Alef maqsura (ى) → ي
+    text = re.sub(r'ى', 'ي', text)
+    # Remove diacritics (tashkeel)
+    text = re.sub(r'[\u064B-\u065F]', '', text)
+    return text
+
+
 def is_arabic(text):
     arabic = sum(1 for c in text if "\u0600" <= c <= "\u06FF")
     latin = sum(1 for c in text if c.isalpha() and not ("\u0600" <= c <= "\u06FF"))
@@ -234,8 +251,10 @@ def is_followup(question):
 def build_embed_query(question, history):
     """If the question is a follow-up, prepend the last user question for context."""
     if history and is_followup(question):
-        return f"{history[-1]['question']} {question}"
-    return question
+        query = f"{history[-1]['question']} {question}"
+    else:
+        query = question
+    return normalize_arabic(query)
 
 
 # ── Similarity & retrieval ────────────────────────────────────────────────────
