@@ -49,6 +49,9 @@ DATE_SENSITIVE_PATTERNS = (
     "الحذف والإضافة امتى", "امتى الحذف والإضافة", "متى الحذف والإضافة",
     "فترة التسجيل امتى", "امتى فترة التسجيل", "متى أسجل", "متى فترة التسجيل",
     # Withdrawal — route to LLM so it picks the correct current semester
+    "withdrawal", "withdraw", "course withdrawal", "withdrawal deadline",
+    "last day to withdraw", "last day to drop", "drop with w", "w grade",
+    "when can i withdraw", "when is the withdrawal", "withdrawal period",
     "الانسحاب من المقررات", "آخر موعد الانسحاب", "موعد الانسحاب",
     "الاد والدروب", "الاد والدرووب", "الاد اند دروب", "ادد اند دروب", "الأد اند دروب",
     "متى الدروب", "الدروب امتى", "امتى الدروب",
