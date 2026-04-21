@@ -7,6 +7,14 @@ Includes a React web UI with UOB branding and a FastAPI backend.
 
 ---
 
+## Preview
+
+<p align="center">
+  <img src="docs/preview.png" alt="UOB Calendar AI Interface" width="480"/>
+</p>
+
+---
+
 ## Features
 
 - **Bilingual** — detects Arabic vs English automatically; supports Gulf/Khaleeji dialect question variants
