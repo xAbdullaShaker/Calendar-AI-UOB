@@ -26,86 +26,144 @@ Includes a React web UI with UOB branding and a FastAPI backend.
 
 ## How It Works
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        SETUP (runs once)                         │
-│                                                                  │
-│  uob_faq.json                                                    │
-│  (36 Q&A entries) ──→ embed_faq.py ──→ OpenAI Embeddings API    │
-│                                               ↓                  │
-│                                      faq_embeddings.json         │
-│                                                                  │
-│  uob_calendar.md                                                 │
-│  (73 event chunks) ──→ embed_calendar.py ──→ OpenAI Embeddings  │
-│                                               ↓                  │
-│                                      calendar_embeddings.json    │
-└──────────────────────────────────────────────────────────────────┘
+The system has two phases: a one-time **setup** that pre-computes embeddings, and a **per-request pipeline** that runs every time a user asks a question.
 
-                         User sends a question
-                                  │
-                                  ↓
-                    ┌─────────────────────────┐
-                    │  sanitize_input()        │
-                    │  · truncate > 500 chars  │
-                    │  · strip control chars   │
-                    │  · reject gibberish      │
-                    └────────────┬────────────┘
-                                 │
-                                 ↓
-                    ┌─────────────────────────┐
-                    │  RateLimiter             │
-                    │  max 30 msgs / 10 min    │
-                    │  per session             │
-                    └────────────┬────────────┘
-                                 │
-                                 ↓
-                    ┌─────────────────────────┐
-                    │  normalize_arabic()      │
-                    │  أ/إ/آ → ا              │
-                    │  ة → ه  |  ى → ا        │
-                    │  strip diacritics        │
-                    └────────────┬────────────┘
-                                 │
-                                 ↓
-                    ┌─────────────────────────┐
-                    │  is_followup()?          │
-                    │  Yes → prepend previous  │
-                    │  question to embed query │
-                    └────────────┬────────────┘
-                                 │
-                                 ↓
-                    ┌─────────────────────────┐
-                    │  OpenAI Embeddings API   │
-                    │  text-embedding-3-small  │
-                    │  query → 1536-dim vector │
-                    └────────────┬────────────┘
-                                 │
-                    ┌────────────┴────────────┐
-               score >= 0.70            score < 0.70
-                    │                         │
-                    ↓                         │
-        ┌───────────────────────┐             │
-        │  is_date_sensitive()?  │             │
-        │  70+ patterns including│             │
-        │  · "did i miss"        │             │
-        │  · "is it open"        │             │
-        │  · "withdrawal"        │             │
-        │  · "اخر يوم دراسي"    │             │
-        │  · "الحين" "لسا"       │             │
-        │  · "الجاي" "خلص"      │             │
-        └──────┬────────────────┘             │
-          No   │        Yes                   │
-          │    │         └────────────────────┤
-          ↓    │                              ↓
-  ┌────────────────┐          ┌──────────────────────────┐
-  │ Pre-written FAQ│          │  Rank 73 calendar chunks  │
-  │ answer returned│          │  Send top 4 to LLM with:  │
-  │ instantly      │          │  · today's date + period  │
-  │ AR → answer_ar │          │  · conversation history   │
-  │ EN → answer_en │          │  · language instruction   │
-  └────────────────┘          │  Stream tokens via SSE ──→│
-                              └──────────────────────────┘
+### Phase 1 — Setup (runs once)
+
+Your data files are converted into vectors (numerical representations of meaning) and saved locally. This only needs to be re-run when you change the data.
+
 ```
+uob_faq.json          embed_faq.py        OpenAI Embed API
+(36 Q&A entries)  ──────────────────→  text-embedding-3-small
+                                               │
+                                               ↓
+                                      faq_embeddings.json
+                                      (vectors for every FAQ question)
+
+uob_calendar.md       embed_calendar.py   OpenAI Embed API
+(73 event rows)   ──────────────────→  text-embedding-3-small
+                                               │
+                                               ↓
+                                      calendar_embeddings.json
+                                      (vectors for every calendar event)
+```
+
+### Phase 2 — Per-request pipeline
+
+Every time a user sends a message, this pipeline runs:
+
+```
+USER SENDS A MESSAGE
+        │
+        ▼
+┌───────────────────────────────┐
+│ 1. SANITIZE                   │
+│    · Truncate to 500 chars    │
+│    · Strip control characters │
+│    · Reject gibberish/symbols │
+└──────────────┬────────────────┘
+               │
+               ▼
+┌───────────────────────────────┐
+│ 2. RATE LIMIT CHECK           │
+│    Max 30 messages per        │
+│    10-minute window/session   │
+│    → 429 error if exceeded    │
+└──────────────┬────────────────┘
+               │
+               ▼
+┌───────────────────────────────┐
+│ 3. NORMALIZE ARABIC           │
+│    Unify spelling variants:   │
+│    أ / إ / آ  →  ا            │
+│    ة  →  ه                    │
+│    ى  →  ا                    │
+│    Remove diacritics          │
+│    (so "اول" = "أول")         │
+└──────────────┬────────────────┘
+               │
+               ▼
+┌───────────────────────────────┐
+│ 4. FOLLOW-UP DETECTION        │
+│    Does the question start    │
+│    with "it", "that", "بس",  │
+│    "لكن", or is it ≤3 words? │
+│    YES → prepend last         │
+│    question for better search │
+└──────────────┬────────────────┘
+               │
+               ▼
+┌───────────────────────────────┐
+│ 5. EMBED THE QUERY            │
+│    OpenAI text-embedding-     │
+│    3-small converts the       │
+│    question into a            │
+│    1536-dimensional vector    │
+└──────────────┬────────────────┘
+               │
+               ▼
+┌───────────────────────────────┐
+│ 6. SEARCH FAQ VECTORS         │
+│    Compare query vector       │
+│    against all FAQ question   │
+│    vectors using cosine       │
+│    similarity → get a score   │
+│    between 0.0 and 1.0        │
+└──────────────┬────────────────┘
+               │
+        ┌──────┴───────┐
+        │              │
+   score ≥ 0.70    score < 0.70
+   (good match)   (no match)
+        │              │
+        ▼              │
+┌──────────────┐       │
+│ 7. DATE-     │       │
+│ SENSITIVE?   │       │
+│              │       │
+│ Does the     │       │
+│ question     │       │
+│ need today's │       │
+│ date to      │       │
+│ answer?      │       │
+│              │       │
+│ Examples:    │       │
+│ "did I miss" │       │
+│ "is it open" │       │
+│ "withdrawal" │       │
+│ "اخر يوم"   │       │
+│ "الحين/لسا" │       │
+└──┬───────┬───┘       │
+   │       │           │
+  NO      YES          │
+   │       └───────────┤
+   │                   │
+   ▼                   ▼
+┌──────────────┐  ┌─────────────────────────────────┐
+│ FAQ ANSWER   │  │ LLM ANSWER (gpt-4o-mini)         │
+│              │  │                                  │
+│ Return the   │  │ 1. Find top 4 most relevant      │
+│ pre-written  │  │    calendar chunks by vector     │
+│ answer from  │  │    similarity                    │
+│ uob_faq.json │  │                                  │
+│ instantly —  │  │ 2. Send to LLM with:             │
+│ no LLM call  │  │    · Today's date & semester     │
+│              │  │    · Those 4 calendar chunks     │
+│ Arabic   →   │  │    · Last 10 conversation turns  │
+│ answer_ar    │  │    · Language instruction        │
+│ English  →   │  │                                  │
+│ answer_en    │  │ 3. Stream answer token by token  │
+│              │  │    to the UI via SSE             │
+│ Source tag:  │  │                                  │
+│ "FAQ: 84%"   │  │ Source tag: "RAG fallback: 71%"  │
+└──────────────┘  └─────────────────────────────────┘
+```
+
+### Why two paths?
+
+The **FAQ path** is instant and costs almost nothing (just one embedding call). It handles ~90% of questions where the answer never changes — holidays, tuition fees, semester dates.
+
+The **LLM path** is used for anything time-relative. It costs slightly more but reasons correctly — *"the add/drop deadline was Feb 12, it's now April 21, so yes you missed it"* — something a static FAQ answer can never do.
 
 ---
 
