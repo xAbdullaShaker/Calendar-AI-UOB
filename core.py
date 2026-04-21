@@ -335,7 +335,7 @@ def ask_llm(question, context_chunks, history, arabic=False):
     messages.append({"role": "user", "content": lang_instruction + get_date_context() + "User question: " + question})
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-mini",
             messages=messages,
         )
     except Exception:
@@ -365,7 +365,7 @@ def ask_llm_stream(question, context_chunks, history, arabic=False):
     messages.append({"role": "user", "content": lang_instruction + get_date_context() + "User question: " + question})
     try:
         stream = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-mini",
             messages=messages,
             stream=True,
         )

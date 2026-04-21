@@ -140,7 +140,7 @@ USER SENDS A MESSAGE
    │                   │
    ▼                   ▼
 ┌──────────────┐  ┌─────────────────────────────────┐
-│ FAQ ANSWER   │  │ LLM ANSWER (gpt-4o-mini)         │
+│ FAQ ANSWER   │  │ LLM ANSWER (gpt-4.1-mini)        │
 │              │  │                                  │
 │ Return the   │  │ 1. Find top 4 most relevant      │
 │ pre-written  │  │    calendar chunks by vector     │
@@ -363,7 +363,7 @@ Open `http://localhost:5173`
 
 ```
 Embeddings:  OpenAI text-embedding-3-small (1536 dimensions)
-LLM:         OpenAI gpt-4o-mini
+LLM:         OpenAI gpt-4.1-mini
 Streaming:   Server-Sent Events (SSE) via FastAPI StreamingResponse
 Backend:     FastAPI + uvicorn
 Frontend:    React + Vite
