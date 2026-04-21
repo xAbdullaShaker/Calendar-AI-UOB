@@ -231,7 +231,11 @@ def sanitize_input(text):
     if not re.search(r"[A-Za-z\u0600-\u06FF]", text):
         return None, "Please enter a question using words."
     words = text.split()
-    if len(words) == 1 and len(text) > 15:
+    if len(words) == 1 and len(text) > 10:
+        return None, "I couldn't understand that. Please rephrase your question."
+    # Reject Latin-only text with no vowels (gibberish like "njnjwndamdadm")
+    latin_chars = [c for c in text.lower() if c.isascii() and c.isalpha()]
+    if len(latin_chars) > 4 and not any(c in "aeiou" for c in latin_chars):
         return None, "I couldn't understand that. Please rephrase your question."
     return text, warning
 
