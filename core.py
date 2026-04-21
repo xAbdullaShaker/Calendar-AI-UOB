@@ -24,6 +24,7 @@ TOP_K_CHUNKS = 4
 MAX_HISTORY = 10
 
 FOLLOWUP_PRONOUNS = {"it", "that", "those", "them", "they", "this", "these"}
+GREETINGS = {"hi", "hello", "hey", "salam", "السلام", "مرحبا", "مرحباً", "هاي", "هلا", "أهلاً", "اهلا", "هلو"}
 FOLLOWUP_PHRASES = (
     "what about", "and ", "also ", "how about",
     "بس ", "لكن ", "احنا ", "انا ", "نحن ",  # Arabic: but, however, we, I
@@ -254,7 +255,7 @@ def is_followup(question):
         return True
     if words and words[0].lower() in FOLLOWUP_PRONOUNS:
         return True
-    if len(words) <= 3:
+    if len(words) <= 3 and not any(w.lower() in GREETINGS for w in words):
         return True
     return False
 
