@@ -21,7 +21,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def normalize_arabic(text):
     text = re.sub(r'[أإآ]', 'ا', text)
     text = re.sub(r'ة', 'ه', text)
-    text = re.sub(r'ى', 'ي', text)
+    text = re.sub(r'ى', 'ا', text)
     text = re.sub(r'[\u064B-\u065F]', '', text)
     return text
 

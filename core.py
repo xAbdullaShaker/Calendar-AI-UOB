@@ -202,8 +202,8 @@ def normalize_arabic(text):
     text = re.sub(r'[أإآ]', 'ا', text)
     # Taa marbuta (ة) → ه
     text = re.sub(r'ة', 'ه', text)
-    # Alef maqsura (ى) → ي
-    text = re.sub(r'ى', 'ي', text)
+    # Alef maqsura (ى) → ا
+    text = re.sub(r'ى', 'ا', text)
     # Remove diacritics (tashkeel)
     text = re.sub(r'[\u064B-\u065F]', '', text)
     return text

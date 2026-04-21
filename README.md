@@ -62,7 +62,7 @@ Includes a React web UI with UOB branding and a FastAPI backend.
                     ┌─────────────────────────┐
                     │  normalize_arabic()      │
                     │  أ/إ/آ → ا              │
-                    │  ة → ه  |  ى → ي        │
+                    │  ة → ه  |  ى → ا        │
                     │  strip diacritics        │
                     └────────────┬────────────┘
                                  │
@@ -164,7 +164,7 @@ Before embedding, user queries are normalized to reduce spelling variation:
 |---|---|
 | Alef variants (أ إ آ) → ا | "أول" → "اول" |
 | Taa marbuta (ة) → ه | "جامعة" → "جامعه" |
-| Alef maqsura (ى) → ي | "مبنى" → "مبني" |
+| Alef maqsura (ى) → ا | "مبنى" → "مبنا" |
 | Strip diacritics | "مُحاضَرة" → "محاضره" |
 
 The same normalization is applied when generating FAQ embeddings so both sides match consistently.
