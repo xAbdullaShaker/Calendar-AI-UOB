@@ -263,6 +263,7 @@ export default function App() {
       </main>
 
       <footer className="input-bar">
+        <div className="input-bar-inner">
         <textarea
           ref={textareaRef}
           value={input}
@@ -282,6 +283,7 @@ export default function App() {
             <polygon points="22 2 15 22 11 13 2 9 22 2" />
           </svg>
         </button>
+        </div>
       </footer>
     </div>
   );

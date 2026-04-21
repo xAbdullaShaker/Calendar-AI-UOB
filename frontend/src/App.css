@@ -521,11 +521,17 @@
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid rgba(226, 232, 240, 0.9);
   padding: 14px 20px 18px;
+  flex-shrink: 0;
+  box-shadow: 0 -6px 32px rgba(0,0,0,0.07);
+}
+
+.input-bar-inner {
+  max-width: 820px;
+  width: 100%;
+  margin: 0 auto;
   display: flex;
   gap: 10px;
   align-items: flex-end;
-  flex-shrink: 0;
-  box-shadow: 0 -6px 32px rgba(0,0,0,0.07);
 }
 
 .input-bar textarea {
