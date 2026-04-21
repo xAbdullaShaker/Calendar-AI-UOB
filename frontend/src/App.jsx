@@ -254,9 +254,7 @@ export default function App() {
         {messages.map((msg, i) => (
           <Message key={i} msg={msg} />
         ))}
-        {!messages.some(m => m.role === "user") && (
-          <Suggestions onSelect={sendMessage} lang={lang} onLangToggle={setLang} />
-        )}
+        <Suggestions onSelect={sendMessage} lang={lang} onLangToggle={setLang} />
         {loading && <TypingIndicator />}
         {rateError && <div className="rate-error">{rateError}</div>}
         <div ref={bottomRef} />
