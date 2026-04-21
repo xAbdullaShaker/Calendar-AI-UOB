@@ -16,8 +16,8 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Use pgvector DB when DATABASE_URL is set; fall back to numpy JSON search otherwise.
-USE_DB = bool(os.getenv("DATABASE_URL"))
+# Use pgvector DB when SUPABASE_URL is set; fall back to numpy JSON search otherwise.
+USE_DB = bool(os.getenv("SUPABASE_URL"))
 
 SIMILARITY_THRESHOLD = 0.70
 TOP_K_CHUNKS = 4

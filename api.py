@@ -113,7 +113,8 @@ def get_embed(text: str):
     try:
         resp = client.embeddings.create(input=[text], model="text-embedding-3-small")
         return resp.data[0].embedding
-    except Exception:
+    except Exception as e:
+        print(f"[get_embed ERROR] {e}")
         return None
 
 
@@ -121,6 +122,7 @@ def get_embed(text: str):
 
 @app.post("/chat/stream")
 def chat_stream(req: ChatRequest):
+    print(f"[REQUEST] message={req.message!r}")
     if not rate_limiter.is_allowed(req.session_id):
         wait = rate_limiter.seconds_until_reset(req.session_id)
         raise HTTPException(status_code=429, detail=f"Too many requests. Wait {wait}s.")
