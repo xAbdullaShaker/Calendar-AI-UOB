@@ -24,7 +24,12 @@ TOP_K_CHUNKS = 4
 MAX_HISTORY = 10
 
 FOLLOWUP_PRONOUNS = {"it", "that", "those", "them", "they", "this", "these"}
-FOLLOWUP_PHRASES = ("what about", "and ", "also ", "how about")
+FOLLOWUP_PHRASES = (
+    "what about", "and ", "also ", "how about",
+    "بس ", "لكن ", "احنا ", "انا ", "نحن ",  # Arabic: but, however, we, I
+    "يعني ", "اقصد ", "قصدي ",               # Arabic: I mean
+    "ماذا عن", "وماذا عن", "طيب ",           # Arabic: what about, ok but
+)
 
 DATE_SENSITIVE_PATTERNS = (
     "did i miss", "have i missed", "did we miss",
