@@ -6,12 +6,12 @@ const SESSION_ID = crypto.randomUUID();
 const API = import.meta.env.VITE_API_URL || "http://localhost:8001";
 
 const SUGGESTIONS = [
-  { en: "When does the semester begin?",         ar: "متى تبدأ الدراسة؟" },
-  { en: "When are the final examinations?",      ar: "متى الامتحانات النهائية؟" },
-  { en: "When is the registration period?",      ar: "متى فترة التسجيل؟" },
-  { en: "What are the official public holidays?",ar: "ما هي الإجازات الرسمية؟" },
-  { en: "When is the course withdrawal deadline?",ar: "متى آخر موعد الانسحاب من المقررات؟" },
-  { en: "When are examination results announced?",ar: "متى يُعلن عن نتائج الامتحانات؟" },
+  { en: "When does the semester begin?",          ar: "متى تبدأ الدراسة؟",                    icon: "📅" },
+  { en: "When are the final examinations?",       ar: "متى الامتحانات النهائية؟",              icon: "📝" },
+  { en: "When is the registration period?",       ar: "متى فترة التسجيل؟",                    icon: "🗂️" },
+  { en: "What are the official public holidays?", ar: "ما هي الإجازات الرسمية؟",              icon: "🏖️" },
+  { en: "When is the course withdrawal deadline?",ar: "متى آخر موعد الانسحاب من المقررات؟",  icon: "⏳" },
+  { en: "When are examination results announced?",ar: "متى يُعلن عن نتائج الامتحانات؟",       icon: "🎓" },
 ];
 
 function Message({ msg }) {
@@ -21,7 +21,11 @@ function Message({ msg }) {
       {isBot && <img src={botAvatar} className="bot-avatar" alt="AI" />}
       <div className="bubble">
         <p>{msg.text}</p>
-        {isBot && msg.source && <span className="source">{msg.source}</span>}
+        {isBot && msg.source && (
+          <span className={`source ${msg.source.startsWith("FAQ") ? "source-faq" : "source-rag"}`}>
+            {msg.source}
+          </span>
+        )}
         {msg.warning && <span className="warning">{msg.warning}</span>}
       </div>
     </div>
@@ -61,6 +65,7 @@ function Suggestions({ onSelect, lang, onLangToggle }) {
             className={`suggestion-chip ${lang === "ar" ? "rtl" : ""}`}
             onClick={() => onSelect(lang === "ar" ? s.ar : s.en)}
           >
+            <span className="chip-icon">{s.icon}</span>
             {lang === "ar" ? s.ar : s.en}
           </button>
         ))}
@@ -238,9 +243,10 @@ export default function App() {
               <span className="logo-ar">مساعد التقويم الأكاديمي</span>
             </div>
           </div>
-          <button className="new-chat-btn" onClick={clearHistory}>
-            New Chat
-          </button>
+          <div className="header-right">
+            <span className="ai-badge">GPT-4.1 mini</span>
+            <button className="new-chat-btn" onClick={clearHistory}>New Chat</button>
+          </div>
         </div>
       </header>
 
@@ -248,7 +254,9 @@ export default function App() {
         {messages.map((msg, i) => (
           <Message key={i} msg={msg} />
         ))}
-        <Suggestions onSelect={sendMessage} lang={lang} onLangToggle={setLang} />
+        {!messages.some(m => m.role === "user") && (
+          <Suggestions onSelect={sendMessage} lang={lang} onLangToggle={setLang} />
+        )}
         {loading && <TypingIndicator />}
         {rateError && <div className="rate-error">{rateError}</div>}
         <div ref={bottomRef} />
