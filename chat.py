@@ -12,7 +12,7 @@ import time
 from dotenv import load_dotenv
 
 from core import (
-    co,
+    client,
     SIMILARITY_THRESHOLD, MAX_HISTORY,
     sanitize_input, is_arabic, build_embed_query,
     find_best_faq_match, retrieve_top_chunks,
@@ -71,12 +71,11 @@ def answer(question, faq_embeddings, faq_answers, calendar_chunks, history):
     embed_query = build_embed_query(question, history)
 
     try:
-        response = co.embed(
-            texts=[embed_query],
-            model="embed-multilingual-v3.0",
-            input_type="search_query",
+        response = client.embeddings.create(
+            input=[embed_query],
+            model="text-embedding-3-small",
         )
-        question_embedding = response.embeddings[0]
+        question_embedding = response.data[0].embedding
     except Exception:
         err = "عذراً، حدث خطأ في الاتصال. حاول مرة أخرى." if arabic else "Sorry, the AI service is unavailable. Please try again."
         return {"response": err}, "[error]"
