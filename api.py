@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core import (
-    co,
+    client,
     USE_DB,
     SIMILARITY_THRESHOLD, MAX_HISTORY,
     sanitize_input, is_arabic, build_embed_query,
@@ -111,8 +111,8 @@ class ChatResponse(BaseModel):
 
 def get_embed(text: str):
     try:
-        resp = co.embed(texts=[text], model="embed-multilingual-v3.0", input_type="search_query")
-        return resp.embeddings[0]
+        resp = client.embeddings.create(input=[text], model="text-embedding-3-small")
+        return resp.data[0].embedding
     except Exception:
         return None
 

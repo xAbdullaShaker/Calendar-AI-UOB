@@ -13,11 +13,11 @@ import json
 import os
 import re
 from dotenv import load_dotenv
-import cohere
+from openai import OpenAI
 
 load_dotenv()
 
-co = cohere.Client(os.getenv("COHERE_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def parse_chunks(filepath):
@@ -62,15 +62,14 @@ def main():
     print(f"Parsed {len(chunks)} chunks from uob_calendar.md")
 
     print("Embedding chunks...")
-    response = co.embed(
-        texts=chunks,
-        model="embed-multilingual-v3.0",
-        input_type="search_document",
+    response = client.embeddings.create(
+        input=chunks,
+        model="text-embedding-3-small",
     )
 
     results = [
-        {"chunk": chunk, "embedding": embedding}
-        for chunk, embedding in zip(chunks, response.embeddings)
+        {"chunk": chunk, "embedding": r.embedding}
+        for chunk, r in zip(chunks, response.data)
     ]
 
     with open("calendar_embeddings.json", "w", encoding="utf-8") as f:

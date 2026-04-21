@@ -10,13 +10,12 @@ Usage:
 import json
 import os
 import re
-import time
 from dotenv import load_dotenv
-import cohere
+from openai import OpenAI
 
 load_dotenv()
 
-co = cohere.Client(os.getenv("COHERE_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def normalize_arabic(text):
@@ -36,21 +35,20 @@ print(f"Embedding {len(faq)} FAQ entries...")
 results = []
 for entry in faq:
     normalized_questions = [normalize_arabic(q) for q in entry["questions"]]
-    response = co.embed(
-        texts=normalized_questions,
-        model="embed-multilingual-v3.0",
-        input_type="search_document",
+    response = client.embeddings.create(
+        input=normalized_questions,
+        model="text-embedding-3-small",
     )
+    embeddings = [r.embedding for r in response.data]
     results.append({
         "id": entry["id"],
         "tags": entry["tags"],
         "questions": entry["questions"],
-        "embeddings": response.embeddings,
+        "embeddings": embeddings,
         "answer_en": entry["answer_en"],
         "answer_ar": entry["answer_ar"],
     })
     print(f"  OK {entry['id']}")
-    time.sleep(1)
 
 with open("faq_embeddings.json", "w", encoding="utf-8") as f:
     json.dump({"faqs": results}, f, ensure_ascii=False, indent=2)

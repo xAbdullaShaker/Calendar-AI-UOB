@@ -10,11 +10,11 @@ import re
 from datetime import date
 import numpy as np
 from dotenv import load_dotenv
-import cohere
+from openai import OpenAI
 
 load_dotenv()
 
-co = cohere.Client(os.getenv("COHERE_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Use pgvector DB when DATABASE_URL is set; fall back to numpy JSON search otherwise.
 USE_DB = bool(os.getenv("DATABASE_URL"))
@@ -322,27 +322,22 @@ def ask_llm(question, context_chunks, history, arabic=False):
     """Call LLM and return a JSON-structured response dict."""
     context = "\n".join(f"- {chunk}" for chunk in context_chunks)
     system = SYSTEM_PROMPT.format(context=context)
-    chat_history = [
-        msg
-        for turn in history
-        for msg in (
-            {"role": "USER", "message": turn["question"]},
-            {"role": "CHATBOT", "message": turn["answer"]},
-        )
-    ]
     lang_instruction = "[IMPORTANT: You MUST respond in Arabic only.]\n" if arabic else ""
+    messages = [{"role": "system", "content": system}]
+    for turn in history:
+        messages.append({"role": "user", "content": turn["question"]})
+        messages.append({"role": "assistant", "content": turn["answer"]})
+    messages.append({"role": "user", "content": lang_instruction + get_date_context() + "User question: " + question})
     try:
-        response = co.chat(
-            model="command-r-plus-08-2024",
-            message=lang_instruction + get_date_context() + "User question: " + question,
-            preamble=system,
-            chat_history=chat_history,
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
         )
     except Exception:
         err = "عذراً، حدث خطأ في الاتصال. حاول مرة أخرى." if arabic else "Sorry, the AI service is unavailable. Please try again."
         return {"ai_interpretation": "", "response_confidence": 1, "response": err}
 
-    raw = response.text.strip()
+    raw = response.choices[0].message.content.strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -357,26 +352,22 @@ def ask_llm_stream(question, context_chunks, history, arabic=False):
     """Generator: yields plain-text tokens from the LLM as they arrive."""
     context = "\n".join(f"- {chunk}" for chunk in context_chunks)
     system = STREAMING_SYSTEM_PROMPT.format(context=context)
-    chat_history = [
-        msg
-        for turn in history
-        for msg in (
-            {"role": "USER", "message": turn["question"]},
-            {"role": "CHATBOT", "message": turn["answer"]},
-        )
-    ]
     lang_instruction = "[IMPORTANT: Respond in Arabic only.]\n" if arabic else "[IMPORTANT: Respond in English only. Do not use Arabic.]\n"
-    message = lang_instruction + get_date_context() + "User question: " + question
+    messages = [{"role": "system", "content": system}]
+    for turn in history:
+        messages.append({"role": "user", "content": turn["question"]})
+        messages.append({"role": "assistant", "content": turn["answer"]})
+    messages.append({"role": "user", "content": lang_instruction + get_date_context() + "User question: " + question})
     try:
-        stream = co.chat_stream(
-            model="command-r-plus-08-2024",
-            message=message,
-            preamble=system,
-            chat_history=chat_history,
+        stream = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            stream=True,
         )
-        for event in stream:
-            if event.event_type == "text-generation":
-                yield event.text
+        for chunk in stream:
+            token = chunk.choices[0].delta.content
+            if token:
+                yield token
     except Exception:
         err = "عذراً، حدث خطأ في الاتصال. حاول مرة أخرى." if arabic else "Sorry, the AI service is unavailable. Please try again."
         yield err
