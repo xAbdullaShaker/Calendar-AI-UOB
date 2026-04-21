@@ -10,15 +10,16 @@ Includes a React web UI with UOB branding and a FastAPI backend.
 ## Features
 
 - **Bilingual** — detects Arabic vs English automatically; supports Gulf/Khaleeji dialect question variants
-- **FAQ-first** — 37 FAQ entries with 650+ question variants handle ~90% of questions with zero LLM cost
+- **Arabic normalization** — strips hamza/taa-marbuta/alef-maqsura variants before embedding so "اول" and "أول" match identically
+- **FAQ-first** — 36 FAQ entries with 650+ question variants handle ~90% of questions with zero LLM cost
 - **Streaming responses** — LLM answers type out token by token via SSE; FAQ answers appear instantly
-- **Date-aware routing** — 60+ date-sensitive patterns intercept questions like "is registration open?", "did I miss it?", "الحين", "لسا", "الجاي" and route them to the LLM instead of returning a static FAQ answer
+- **Date-aware routing** — 70+ date-sensitive patterns intercept questions like "is registration open?", "did I miss it?", "withdrawal deadline", "اخر يوم دراسي", "الحين", "لسا", "الجاي" and route them to the LLM instead of returning a static FAQ answer
 - **Upcoming vs past** — bot correctly returns upcoming events, not already-past ones (e.g. asking "when are finals?" in April 2026 returns June 2026 finals, not December 2025)
 - **RAG fallback** — only the top 4 relevant calendar chunks are sent to the LLM, never the full document
-- **Conversation memory** — remembers last 10 turns; detects follow-up questions and expands the embed query
+- **Conversation memory** — remembers last 10 turns; detects English and Arabic follow-up phrases ("بس", "لكن", "يعني") and expands the embed query with prior context
 - **Input sanitization** — truncates at 500 chars, strips control characters, rejects gibberish
 - **Rate limiting** — max 30 messages per 10-minute rolling window per session
-- **Error handling** — graceful fallback if Cohere API is unavailable; user-friendly error messages
+- **Error handling** — graceful fallback if OpenAI API is unavailable; user-friendly error messages
 - **React web UI** — chat interface with UOB navy/gold theme, suggestion chips, EN/AR toggle, typing indicator, bot avatar
 
 ---
@@ -30,12 +31,12 @@ Includes a React web UI with UOB branding and a FastAPI backend.
 │                        SETUP (runs once)                         │
 │                                                                  │
 │  uob_faq.json                                                    │
-│  (37 Q&A entries) ──→ embed_faq.py ──→ Cohere Embed API         │
+│  (36 Q&A entries) ──→ embed_faq.py ──→ OpenAI Embeddings API    │
 │                                               ↓                  │
 │                                      faq_embeddings.json         │
 │                                                                  │
 │  uob_calendar.md                                                 │
-│  (73 event chunks) ──→ embed_calendar.py ──→ Cohere Embed API   │
+│  (73 event chunks) ──→ embed_calendar.py ──→ OpenAI Embeddings  │
 │                                               ↓                  │
 │                                      calendar_embeddings.json    │
 └──────────────────────────────────────────────────────────────────┘
@@ -59,6 +60,14 @@ Includes a React web UI with UOB branding and a FastAPI backend.
                                  │
                                  ↓
                     ┌─────────────────────────┐
+                    │  normalize_arabic()      │
+                    │  أ/إ/آ → ا              │
+                    │  ة → ه  |  ى → ي        │
+                    │  strip diacritics        │
+                    └────────────┬────────────┘
+                                 │
+                                 ↓
+                    ┌─────────────────────────┐
                     │  is_followup()?          │
                     │  Yes → prepend previous  │
                     │  question to embed query │
@@ -66,22 +75,22 @@ Includes a React web UI with UOB branding and a FastAPI backend.
                                  │
                                  ↓
                     ┌─────────────────────────┐
-                    │  Cohere Embed API        │
-                    │  query → vector          │
+                    │  OpenAI Embeddings API   │
+                    │  text-embedding-3-small  │
+                    │  query → 1536-dim vector │
                     └────────────┬────────────┘
                                  │
                     ┌────────────┴────────────┐
-               score >= 0.55            score < 0.55
+               score >= 0.70            score < 0.70
                     │                         │
                     ↓                         │
         ┌───────────────────────┐             │
         │  is_date_sensitive()?  │             │
-        │  60+ patterns including│             │
+        │  70+ patterns including│             │
         │  · "did i miss"        │             │
         │  · "is it open"        │             │
-        │  · "when are finals"   │             │
-        │  · "when are results"  │             │
-        │  · "when is eid"       │             │
+        │  · "withdrawal"        │             │
+        │  · "اخر يوم دراسي"    │             │
         │  · "الحين" "لسا"       │             │
         │  · "الجاي" "خلص"      │             │
         └──────┬────────────────┘             │
@@ -105,12 +114,13 @@ Includes a React web UI with UOB branding and a FastAPI backend.
 FAQ answers are static strings — they have no knowledge of today's date.
 Without `is_date_sensitive()`, a question like *"when are the final exams?"* in April 2026 would match the `fall_finals` FAQ entry and return December 2025 dates — already past.
 
-The function checks for 60+ patterns across three categories:
+The function checks for 70+ patterns across four categories:
 
 | Category | Examples |
 |---|---|
 | Status checks | "is it open", "can i still", "did I miss", "is it too late" |
-| Generic multi-semester | "when are finals", "when are results", "when is eid" |
+| Generic multi-semester | "when are finals", "when are results", "withdrawal deadline" |
+| Last/first day (generic) | "last day of classes", "اخر يوم دراسي", "اول يوم دوام" |
 | Gulf Arabic colloquial | "الحين", "لسا", "الجاي", "خلص", "باقي كم", "فاتني", "هالفترة" |
 
 When triggered, the question is routed to the LLM which receives today's date and current academic period and can reason: *"finals are upcoming in June 2026"* rather than returning a hardcoded past answer.
@@ -122,7 +132,7 @@ When triggered, the question is routed to the LLM which receives today's date an
 Every LLM call has a date context block injected into the message:
 
 ```
-Today is: Wednesday, 16 April 2026
+Today is: Wednesday, 21 April 2026
 Current academic period: Second Semester 2025/2026 (classes in progress)
 
 CRITICAL RULES:
@@ -143,6 +153,21 @@ The LLM answers relative to today without ever echoing the date back to the user
 | Second Semester (finals) | 15 May 2026 | 30 May 2026 |
 | Summer Session (classes) | 1 Jul 2026 | 7 Aug 2026 |
 | Summer Session (finals) | 8 Aug 2026 | 14 Aug 2026 |
+
+---
+
+## Arabic Normalization
+
+Before embedding, user queries are normalized to reduce spelling variation:
+
+| Transformation | Example |
+|---|---|
+| Alef variants (أ إ آ) → ا | "أول" → "اول" |
+| Taa marbuta (ة) → ه | "جامعة" → "جامعه" |
+| Alef maqsura (ى) → ي | "مبنى" → "مبني" |
+| Strip diacritics | "مُحاضَرة" → "محاضره" |
+
+The same normalization is applied when generating FAQ embeddings so both sides match consistently.
 
 ---
 
@@ -197,11 +222,12 @@ The app detects automatically: if `DATABASE_URL` is set it uses pgvector, otherw
 | File | What it does |
 |------|-------------|
 | `api.py` | FastAPI backend — FAQ match, streaming SSE endpoint, RAG fallback, rate limiting |
+| `core.py` | Shared logic — Arabic normalization, date-sensitive routing, LLM calls, follow-up detection |
 | `chat.py` | CLI chatbot — same logic as api.py for terminal use |
-| `uob_faq.json` | 37 Q&A entries with 650+ Arabic + English question variants |
+| `uob_faq.json` | 36 Q&A entries with 650+ Arabic + English question variants |
 | `uob_calendar.md` | Full academic calendar source document |
-| `embed_faq.py` | Embeds FAQ questions — run once, re-run after editing `uob_faq.json` |
-| `embed_calendar.py` | Chunks calendar into 73 events and embeds each — run once |
+| `embed_faq.py` | Embeds FAQ questions using OpenAI — run once, re-run after editing `uob_faq.json` |
+| `embed_calendar.py` | Chunks calendar into 73 events and embeds each using OpenAI — run once |
 | `eval_threshold.py` | Evaluates FAQ similarity threshold across test cases |
 | `faq_embeddings.json` | Generated by `embed_faq.py` — gitignored, must generate locally |
 | `calendar_embeddings.json` | Generated by `embed_calendar.py` — gitignored, must generate locally |
@@ -225,7 +251,7 @@ pip install -r requirements.txt
 
 Create a `.env` file:
 ```
-COHERE_API_KEY=your_cohere_key_here
+OPENAI_API_KEY=your_openai_key_here
 DATABASE_URL=postgresql://postgres:[password]@[host]:5432/postgres
 ```
 
@@ -256,12 +282,12 @@ This creates two tables (`faq_embeddings`, `calendar_chunks`), inserts all vecto
 ### 5. Start the backend
 
 ```bash
-python -m uvicorn api:app --reload --port 8001
+python -m uvicorn api:app --port 8001
 ```
 
 On startup it prints either:
 - `pgvector mode: embeddings served from PostgreSQL` — if `DATABASE_URL` is set
-- `numpy mode: 37 FAQ entries, N calendar chunks loaded` — if using local JSON fallback
+- `numpy mode: 36 FAQ entries, N calendar chunks loaded` — if using local JSON fallback
 
 ### 6. Start the frontend
 
@@ -278,13 +304,15 @@ Open `http://localhost:5173`
 ## Tech Stack
 
 ```
-Embeddings:  Cohere embed-multilingual-v3.0
-LLM:         Cohere command-r-plus-08-2024
+Embeddings:  OpenAI text-embedding-3-small (1536 dimensions)
+LLM:         OpenAI gpt-4o-mini
 Streaming:   Server-Sent Events (SSE) via FastAPI StreamingResponse
 Backend:     FastAPI + uvicorn
 Frontend:    React + Vite
 Matching:    pgvector cosine similarity (PostgreSQL <=> operator)
+             Fallback: numpy cosine similarity (local dev)
 RAG:         Top-4 chunk retrieval per query
 Language:    Arabic/Latin character ratio (>50% Arabic → AR)
+Normalize:   Arabic spelling variants unified before embedding
 Storage:     PostgreSQL + pgvector (fallback: flat JSON for local dev)
 ```
