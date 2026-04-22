@@ -144,7 +144,7 @@ USER SENDS A MESSAGE
                │
                ▼
 ┌───────────────────────────────┐
-│ 6. SEARCH FAQ VECTORS         │
+│ 8. SEARCH FAQ VECTORS         │
 │    Compare query vector       │
 │    against all FAQ question   │
 │    vectors using cosine       │
@@ -159,7 +159,7 @@ USER SENDS A MESSAGE
         │              │
         ▼              │
 ┌──────────────┐       │
-│ 8. DATE-     │       │
+│ 9. DATE-     │       │
 │ SENSITIVE?   │       │
 │              │       │
 │ Does the     │       │
