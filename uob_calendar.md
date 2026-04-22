@@ -18,9 +18,9 @@
 | Sun, 14 Sep 2025 | **Classes begin (Graduate studies)** |
 | Thu, 18 Sep 2025 | Last day to drop courses with fee refund; last day to apply for 1–2 semester deferral |
 | Sun 28 Sep – Thu 13 Nov 2025 | Withdrawal period with "W" grade |
-| Wed 5 Nov – Wed 3 Dec 2025 | Academic advising for preliminary registration (Spring) |
+| Wed 5 Nov – Wed 3 Dec 2025 | Academic advising for preliminary registration (Spring); Preliminary registration for Second Semester |
 | Sun 16 Nov – Thu 11 Dec 2025 | Course evaluation by students |
-| Sun 23 Nov – Wed 3 Dec 2025 | Preliminary registration for Second Semester |
+| Sun 23 Nov – Wed 3 Dec 2025 | Minor-specialization requests for undergraduate (during preliminary registration period) |
 | Thu, 11 Dec 2025 | Last day to record mandatory withdrawal (WA/WF) |
 | Sun 14 Dec – Mon 15 Dec 2025 | University celebrations: National Day & Accession Day |
 | Tue 16 Dec – Wed 17 Dec 2025 | **National Day & Accession Day holiday** |
@@ -29,8 +29,8 @@
 | Wed, 31 Dec 2025 | Last day to submit final exam grades |
 | Thu, 1 Jan 2026 | New Year's Day holiday |
 | Sun, 4 Jan 2026 | Final results announced |
-| Mon 5 Jan – Thu 11 Jan 2026 | Student grade-appeal submissions |
-| Thu 5 Jan – Thu 31 Jan 2026 | Student-case study submissions |
+| Mon 5 Jan – Sun 11 Jan 2026 | Student grade-appeal submissions |
+| Mon 5 Jan – Sat 31 Jan 2026 | Student-case study submissions |
 | Sun 18 Jan – Thu 29 Jan 2026 | Mid-year faculty break |
 | Sun 25 Jan – Thu 29 Jan 2026 | Transfer requests for Second Semester (undergraduate programs) |
 
@@ -51,7 +51,7 @@
 | Wed 8 Apr – Mon 4 May 2026 | Course evaluation by students |
 | Sun 19 Apr – Sat 25 Apr 2026 | Preliminary registration for Summer |
 | Sun 19 Apr – Thu 14 May 2026 | Academic advising for Fall 2026/2027 preliminary registration |
-| Thu 30 Apr – Thu 14 May 2026 | Preliminary registration for First Semester 2026/2027 |
+| Thu 30 Apr – Thu 14 May 2026 | Preliminary registration for First Semester 2026/2027; minor-specialization requests |
 | Fri, 1 May 2026 | Labour Day holiday |
 | Mon, 4 May 2026 | Last day to record mandatory withdrawal (WA/WF) |
 | Thu, 21 May 2026 | Last day of classes |
@@ -64,7 +64,7 @@
 | Mon 15 Jun – Mon 22 Jun 2026 | Transfer requests for Fall 2026/2027 |
 | Tue, 16 Jun 2026 | Islamic New Year 1448 AH holiday* |
 | Tue 16 Jun – Sun 21 Jun 2026 | Student grade-appeal submissions |
-| Thu 16 Jun – Sun 28 Jun 2026 | Student-case study submissions |
+| Tue 16 Jun – Sun 28 Jun 2026 | Student-case study submissions |
 | Thu 25 Jun – Fri 26 Jun 2026 | Ashura holiday* |
 | Sun, 28 Jun 2026 | Last day to submit grade-appeal results |
 | Tue, 30 Jun 2026 | Last day of faculty duty |

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import "./App.css";
 import botAvatar from "./assets/bot-avatar.png";
+import ReactMarkdown from "react-markdown";
 
 const SESSION_ID = crypto.randomUUID();
 const API = import.meta.env.VITE_API_URL || "http://localhost:8001";
@@ -14,13 +15,21 @@ const SUGGESTIONS = [
   { en: "When are examination results announced?",ar: "متى يُعلن عن نتائج الامتحانات؟",       icon: "🎓" },
 ];
 
+function isArabic(text) {
+  const arabic = (text.match(/[\u0600-\u06FF]/g) || []).length;
+  const latin  = (text.match(/[a-zA-Z]/g) || []).length;
+  return arabic > latin;
+}
+
 function Message({ msg }) {
   const isBot = msg.role === "bot";
+  const rtl   = isArabic(msg.text);
+
   return (
     <div className={`message ${msg.role}`}>
-      {isBot && <img src={botAvatar} className="bot-avatar" alt="AI" />}
-      <div className="bubble">
-        <p>{msg.text}</p>
+      {isBot && <img src={botAvatar} className="bot-avatar" alt="UOB Calendar AI Assistant" />}
+      <div className={`bubble${rtl ? " rtl" : ""}`}>
+        {isBot ? <ReactMarkdown>{msg.text}</ReactMarkdown> : <p>{msg.text}</p>}
         {isBot && msg.source && (
           <span className={`source ${msg.source.startsWith("FAQ") ? "source-faq" : "source-rag"}`}>
             {msg.source}
