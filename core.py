@@ -300,13 +300,139 @@ def is_followup(question):
     return False
 
 
+# ── Intent normalization (dialect + slang → standard Arabic) ─────────────────
+#
+# Applied BEFORE embedding so dialect/slang queries score higher in FAQ cosine
+# similarity without retraining any model or modifying Supabase vectors.
+#
+# Ordered longest-match-first to prevent partial substitutions.
+# Format: (source_term, standard_academic_arabic)
+#
+DIALECT_NORMALIZATIONS = [
+    # ── Finals (English loanwords + transliterations) ──────────────────────
+    ("الفاينلز",             "الامتحانات النهائية"),
+    ("فاينلز",               "الامتحانات النهائية"),
+    ("الفاينل",              "الامتحانات النهائية"),
+    ("فاينل",                "الامتحانات النهائية"),
+    ("الفينالز",             "الامتحانات النهائية"),
+    ("الفينال",              "الامتحانات النهائية"),
+    ("فينال",                "الامتحانات النهائية"),
+    ("finals",               "final exams"),
+    ("final exam",           "final exam"),        # keep EN intact
+
+    # ── Midterms ────────────────────────────────────────────────────────────
+    ("الميد ترم",            "امتحان منتصف الفصل"),
+    ("ميد ترم",              "امتحان منتصف الفصل"),
+    ("الميدترم",             "امتحان منتصف الفصل"),
+    ("ميدترم",               "امتحان منتصف الفصل"),
+    ("الميد",                "الامتحان النصفي"),
+    ("ميد",                  "الامتحان النصفي"),
+
+    # ── Drop/Add (multiple transliterations used in Bahraini student chat) ──
+    ("الاد والدرووب",        "الحذف والإضافة"),
+    ("الاد اند دروب",        "الحذف والإضافة"),
+    ("الأد اند دروب",        "الحذف والإضافة"),
+    ("ادد اند دروب",         "الحذف والإضافة"),
+    ("add and drop",         "registration drop add"),
+    ("drop and add",         "registration drop add"),
+    ("الاد والدروب",         "الحذف والإضافة"),
+    ("الاد",                 "الإضافة"),
+    ("الدروب",               "الحذف والإضافة"),
+    ("دروب",                 "حذف"),
+
+    # ── "Last day / last deadline" colloquial ───────────────────────────────
+    ("اخر يوم للدروب",       "آخر موعد الحذف والإضافة"),
+    ("اخر يوم الدروب",       "آخر موعد الحذف والإضافة"),
+    ("آخر يوم للدروب",       "آخر موعد الحذف والإضافة"),
+    ("اخر يوم للحذف",        "آخر موعد الحذف والإضافة"),
+    ("آخر يوم للحذف",        "آخر موعد الحذف والإضافة"),
+    ("اخر موعد للدروب",      "آخر موعد الحذف والإضافة"),
+    ("اخر يوم",              "آخر موعد"),
+    ("اخر وقت",              "آخر موعد"),
+    ("اخر موعد",             "آخر موعد"),   # normalize alef
+
+    # ── "When" — Gulf/Khaleeji dialect ──────────────────────────────────────
+    ("وقت ايش",              "متى"),
+    ("أي وقت",               "متى"),
+    ("ايمتى",                "متى"),
+    ("امتى",                 "متى"),
+
+    # ── Semester slang ───────────────────────────────────────────────────────
+    ("السيمستر",             "الفصل الدراسي"),
+    ("سيمستر",               "فصل"),
+    ("الترم الثاني",         "الفصل الثاني"),
+    ("الترم الاول",          "الفصل الأول"),
+    ("الترم الأول",          "الفصل الأول"),
+    ("الترم الصيفي",         "الفصل الصيفي"),
+    ("الترم",                "الفصل"),
+    ("ترم",                  "فصل"),
+
+    # ── Results / grades ────────────────────────────────────────────────────
+    ("النتايج",              "النتائج"),
+    ("النتائح",              "النتائج"),
+    ("رزلتس",               "النتائج"),
+    ("رزلت",                "النتائج"),
+
+    # ── Withdrawal ───────────────────────────────────────────────────────────
+    ("سحب مادة",             "الانسحاب من المقررات"),
+    ("سحب مواد",             "الانسحاب من المقررات"),
+    ("اسحب من",              "الانسحاب من"),
+    ("بسحب",                 "أنسحب"),
+
+    # ── Classes / lectures ───────────────────────────────────────────────────
+    ("الكلاسيز",             "المحاضرات"),
+    ("الكلاس",               "المحاضرات"),
+    ("كلاس",                 "محاضرات"),
+    ("اللكشر",               "المحاضرات"),
+    ("لكشر",                 "محاضرات"),
+
+    # ── Registration ─────────────────────────────────────────────────────────
+    ("بريليم",               "التسجيل المبدئي"),
+    ("بريلم",                "التسجيل المبدئي"),
+    ("prelim",               "preliminary registration"),
+
+    # ── "Study / university" colloquial ─────────────────────────────────────
+    ("الجامعه",              "الجامعة"),
+    ("المدرسه",              "الجامعة"),
+]
+
+
+def normalize_intent(text: str) -> str:
+    """
+    Normalize dialect, slang, and mixed Arabic/English input before embedding.
+
+    Strategy: apply ordered string substitutions (longest-match first) to convert
+    colloquial/loanword phrasing into standard academic Arabic. This boosts cosine
+    similarity against FAQ question embeddings without any model retraining.
+
+    Only modifies the query used for embedding — NOT the user-facing text.
+    """
+    result = text
+    result_lower = result.lower()
+
+    for source, target in DIALECT_NORMALIZATIONS:
+        source_lower = source.lower()
+        if source_lower in result_lower:
+            # Case-insensitive replace (important for Latin loanwords like "finals")
+            pattern = re.compile(re.escape(source), re.IGNORECASE)
+            result = pattern.sub(target, result)
+            result_lower = result.lower()  # update after substitution
+
+    return result.strip()
+
+
 def build_embed_query(question, history):
-    """If the question is a follow-up, prepend the last user question for context."""
+    """
+    Build the text to embed for FAQ/RAG matching.
+    Pipeline: follow-up expansion → Arabic normalization → intent normalization.
+    """
     if history and is_followup(question):
         query = f"{history[-1]['question']} {question}"
     else:
         query = question
-    return normalize_arabic(query)
+    query = normalize_arabic(query)
+    query = normalize_intent(query)   # dialect/slang → standard academic Arabic
+    return query
 
 
 # ── Similarity & retrieval ────────────────────────────────────────────────────
