@@ -143,28 +143,36 @@ def chat_stream(req: ChatRequest):
 
     def generate():
         answer_text = ""
+        source = f"RAG fallback — {score:.0%}"  # default; overwritten below
+        try:
+            print(f"[FAQ] best={best_entry}, score={score:.0%}, date_sensitive={is_date_sensitive(clean)}")
+            if score >= SIMILARITY_THRESHOLD and not is_date_sensitive(clean):
+                result = build_faq_response(best_entry, arabic, score, faq_answers)
+                answer_text = result["response"]
+                source = f"FAQ match: {score:.0%}"
+                yield f"data: {json.dumps({'type': 'token', 'text': answer_text})}\n\n"
+            else:
+                top_chunks = retrieve_top_chunks(question_embedding, calendar_chunks)
+                source = (
+                    f"RAG (date-sensitive) — {score:.0%}"
+                    if score >= SIMILARITY_THRESHOLD
+                    else f"RAG fallback — {score:.0%}"
+                )
+                print(f"[RAG] chunks={len(top_chunks)}, source={source}")
+                for token in ask_llm_stream(clean, top_chunks, history, arabic=arabic):
+                    answer_text += token
+                    yield f"data: {json.dumps({'type': 'token', 'text': token})}\n\n"
 
-        if score >= SIMILARITY_THRESHOLD and not is_date_sensitive(clean):
-            result = build_faq_response(best_entry, arabic, score, faq_answers)
-            answer_text = result["response"]
-            source = f"FAQ match: {score:.0%}"
-            yield f"data: {json.dumps({'type': 'token', 'text': answer_text})}\n\n"
-        else:
-            top_chunks = retrieve_top_chunks(question_embedding, calendar_chunks)
-            source = (
-                f"RAG (date-sensitive) — {score:.0%}"
-                if score >= SIMILARITY_THRESHOLD
-                else f"RAG fallback — {score:.0%}"
-            )
-            for token in ask_llm_stream(clean, top_chunks, history, arabic=arabic):
-                answer_text += token
-                yield f"data: {json.dumps({'type': 'token', 'text': token})}\n\n"
-
-        hist = sessions.get(req.session_id, [])
-        hist.append({"question": clean, "answer": answer_text})
-        if len(hist) > MAX_HISTORY:
-            hist.pop(0)
-        sessions[req.session_id] = hist
+            hist = sessions.get(req.session_id, [])
+            hist.append({"question": clean, "answer": answer_text})
+            if len(hist) > MAX_HISTORY:
+                hist.pop(0)
+            sessions[req.session_id] = hist
+        except Exception as e:
+            print(f"[generate ERROR] {e}")
+            if not answer_text:
+                err = "عذراً، حدث خطأ. يرجى المحاولة مجدداً." if arabic else "Something went wrong. Please try again."
+                yield f"data: {json.dumps({'type': 'token', 'text': err})}\n\n"
 
         yield f"data: {json.dumps({'type': 'done', 'source': source, 'warning': warning})}\n\n"
 

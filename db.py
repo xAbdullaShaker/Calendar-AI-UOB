@@ -24,21 +24,28 @@ def _get_client() -> Client:
 
 def find_best_faq_match_db(embedding: list) -> tuple[str, float]:
     """Return (faq_id, cosine_similarity_score) for the closest FAQ vector."""
-    result = _get_client().rpc("match_faq", {
-        "query_embedding": embedding,
-        "match_threshold": 0.0,
-        "match_count": 1,
-    }).execute()
-    if result.data:
-        row = result.data[0]
-        return (row["faq_id"], float(row["similarity"]))
+    try:
+        result = _get_client().rpc("match_faq", {
+            "query_embedding": embedding,
+            "match_threshold": 0.0,
+            "match_count": 1,
+        }).execute()
+        if result.data:
+            row = result.data[0]
+            return (row["faq_id"], float(row["similarity"]))
+    except Exception as e:
+        print(f"[DB find_best_faq_match_db ERROR] {e}")
     return (None, 0.0)
 
 
 def retrieve_top_chunks_db(embedding: list, top_k: int = 4) -> list[str]:
     """Return the top_k most similar calendar chunk texts."""
-    result = _get_client().rpc("match_calendar", {
-        "query_embedding": embedding,
-        "match_count": top_k,
-    }).execute()
-    return [row["chunk"] for row in result.data] if result.data else []
+    try:
+        result = _get_client().rpc("match_calendar", {
+            "query_embedding": embedding,
+            "match_count": top_k,
+        }).execute()
+        return [row["chunk"] for row in result.data] if result.data else []
+    except Exception as e:
+        print(f"[DB retrieve_top_chunks_db ERROR] {e}")
+        return []
