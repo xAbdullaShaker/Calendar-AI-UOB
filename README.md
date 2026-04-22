@@ -18,7 +18,9 @@ Includes a React web UI with UOB branding and a FastAPI backend.
 ## Features
 
 - **Bilingual** — detects Arabic vs English automatically; supports Gulf/Khaleeji dialect question variants
-- **Arabic normalization** — strips hamza/taa-marbuta/alef-maqsura variants before embedding so "اول" and "أول" match identically
+- **Arabic normalization** — strips hamza/taa-marbuta/alef-maqsura/tatweel variants before embedding so "اول" and "أول" match identically
+- **Arabic spell correction** — [camel-tools](https://github.com/CAMeL-Lab/camel_tools) MSA spell checker auto-corrects typos (e.g. "الامتحانت" → "الامتحانات", "تسيجل" → "تسجيل") after dialect normalization, before embedding
+- **Dialect normalization** — 70+ Gulf slang/loanword mappings convert terms like "الفاينل", "الميدترم", "دروب", "السيمستر" to standard academic Arabic before embedding — no model retraining needed
 - **FAQ-first** — 36 FAQ entries with 650+ question variants handle ~90% of questions with zero LLM cost
 - **Streaming responses** — LLM answers type out token by token via SSE; FAQ answers appear instantly
 - **Date-aware routing** — 70+ date-sensitive patterns intercept questions like "is registration open?", "did I miss it?", "withdrawal deadline", "اخر يوم دراسي", "الحين", "لسا", "الجاي" and route them to the LLM instead of returning a static FAQ answer
@@ -81,18 +83,7 @@ USER SENDS A MESSAGE
                │
                ▼
 ┌───────────────────────────────┐
-│ 3. NORMALIZE ARABIC           │
-│    Unify spelling variants:   │
-│    أ / إ / آ  →  ا            │
-│    ة  →  ه                    │
-│    ى  →  ا                    │
-│    Remove diacritics          │
-│    (so "اول" = "أول")           │
-└──────────────┬────────────────┘
-               │
-               ▼
-┌───────────────────────────────┐
-│ 4. FOLLOW-UP DETECTION        │
+│ 3. FOLLOW-UP DETECTION        │
 │    Does the question start    │
 │    with "it", "that", "بس",  │
 │    "لكن", or is it ≤3 words? │
@@ -102,11 +93,53 @@ USER SENDS A MESSAGE
                │
                ▼
 ┌───────────────────────────────┐
-│ 5. EMBED THE QUERY            │
+│ 4. NORMALIZE ARABIC           │
+│    Unify character variants:  │
+│    أ / إ / آ / ٱ  →  ا       │
+│    ة  →  ه                    │
+│    ى  →  ا                    │
+│    Remove diacritics/tatweel  │
+│    (so "اول" = "أول")         │
+└──────────────┬────────────────┘
+               │
+               ▼
+┌───────────────────────────────┐
+│ 5. DIALECT NORMALIZATION      │
+│    70+ Gulf/Khaleeji slang    │
+│    and loanword mappings:     │
+│    "الفاينل" → "الامتحانات   │
+│     النهائية"                 │
+│    "الميدترم" → "امتحان      │
+│     منتصف الفصل"              │
+│    "دروب" → "حذف"             │
+│    "السيمستر" → "الفصل"       │
+│    "امتى" → "متى"             │
+│    No model needed — pure     │
+│    dictionary substitution    │
+└──────────────┬────────────────┘
+               │
+               ▼
+┌───────────────────────────────┐
+│ 6. SPELL CORRECTION           │
+│    camel-tools MSA spell      │
+│    checker fixes remaining    │
+│    typos after slang is       │
+│    already normalized:        │
+│    "الامتحانت" →              │
+│      "الامتحانات"             │
+│    "تسيجل" → "تسجيل"         │
+│    "متا" → "متى"              │
+│    Graceful fallback if       │
+│    camel-tools not installed  │
+└──────────────┬────────────────┘
+               │
+               ▼
+┌───────────────────────────────┐
+│ 7. EMBED THE QUERY            │
 │    OpenAI text-embedding-     │
 │    3-small converts the       │
-│    question into a            │
-│    1536-dimensional vector    │
+│    normalized question into   │
+│    a 1536-dimensional vector  │
 └──────────────┬────────────────┘
                │
                ▼
@@ -126,7 +159,7 @@ USER SENDS A MESSAGE
         │              │
         ▼              │
 ┌──────────────┐       │
-│ 7. DATE-     │       │
+│ 8. DATE-     │       │
 │ SENSITIVE?   │       │
 │              │       │
 │ Does the     │       │
@@ -222,18 +255,50 @@ The LLM answers relative to today without ever echoing the date back to the user
 
 ---
 
-## Arabic Normalization
+## Arabic Processing Pipeline
 
-Before embedding, user queries are normalized to reduce spelling variation:
+Before embedding, every Arabic query passes through three layers of normalization. The same transformations are applied when generating FAQ embeddings, so both sides match consistently.
+
+### Layer 1 — Character Normalization
+
+Reduces Unicode spelling variation caused by different keyboard layouts and encoding habits:
 
 | Transformation | Example |
 |---|---|
-| Alef variants (أ إ آ) → ا | "أول" → "اول" |
+| Alef variants (أ إ آ ٱ) → ا | "أول" → "اول" |
 | Taa marbuta (ة) → ه | "جامعة" → "جامعه" |
 | Alef maqsura (ى) → ا | "مبنى" → "مبنا" |
 | Strip diacritics | "مُحاضَرة" → "محاضره" |
+| Strip tatweel (ـ) | "جـامعة" → "جامعه" |
 
-The same normalization is applied when generating FAQ embeddings so both sides match consistently.
+### Layer 2 — Dialect & Slang Normalization
+
+70+ ordered substitutions convert Gulf/Khaleeji dialect, loanwords, and student slang into standard academic Arabic — without any model or training data. Applied before embedding so FAQ similarity scores stay high even for casual phrasing:
+
+| Input (slang/dialect) | Normalized |
+|---|---|
+| الفاينل / فاينلز / الفينال | الامتحانات النهائية |
+| الميدترم / ميد ترم / الميد | امتحان منتصف الفصل |
+| الاد والدروب / دروب | الحذف والإضافة |
+| السيمستر / الترم | الفصل الدراسي |
+| امتى / ايمتى | متى |
+| النتايج / رزلتس | النتائج |
+| سحب مادة | الانسحاب من المقررات |
+| بريليم | التسجيل المبدئي |
+| اخر يوم للدروب | آخر موعد الحذف والإضافة |
+
+### Layer 3 — Spell Correction (camel-tools)
+
+After slang is already mapped to standard Arabic, [camel-tools](https://github.com/CAMeL-Lab/camel_tools) MSA spell checker fixes remaining typos:
+
+| Typo | Corrected |
+|---|---|
+| الامتحانت | الامتحانات |
+| تسيجل | تسجيل |
+| متا | متى |
+| الجامعه البحرين | الجامعة البحرين |
+
+This layer is **optional** — if camel-tools is not installed, the server starts normally and falls back to layers 1 and 2 only. A startup message indicates which mode is active.
 
 ---
 
@@ -313,6 +378,14 @@ The app detects automatically: if `DATABASE_URL` is set it uses pgvector, otherw
 pip install -r requirements.txt
 ```
 
+Then download the camel-tools Arabic spell model (one-time, ~200 MB):
+
+```bash
+camel_data download -i MSA-Spelling-r1
+```
+
+> This step is optional — the server starts and works without it, falling back to character normalization + dialect dictionary only. A startup message will confirm whether the spell checker loaded successfully.
+
 ### 2. Configure environment
 
 Create a `.env` file:
@@ -379,6 +452,7 @@ Matching:    pgvector cosine similarity (PostgreSQL <=> operator)
              Fallback: numpy cosine similarity (local dev)
 RAG:         Top-4 chunk retrieval per query
 Language:    Arabic/Latin character ratio (>50% Arabic → AR)
-Normalize:   Arabic spelling variants unified before embedding
+Arabic NLP:  3-layer pipeline — character normalization → dialect mapping
+             (70+ Gulf slang entries) → camel-tools MSA spell correction
 Storage:     PostgreSQL + pgvector (fallback: flat JSON for local dev)
 ```

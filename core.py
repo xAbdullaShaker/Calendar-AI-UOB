@@ -241,15 +241,58 @@ def get_date_context():
 
 def normalize_arabic(text):
     """Normalize Arabic spelling variations before embedding."""
-    # Alef variants (أ إ آ) → ا
-    text = re.sub(r'[أإآ]', 'ا', text)
+    # Alef variants (أ إ آ ٱ) → ا
+    text = re.sub(r'[أإآٱ]', 'ا', text)
     # Taa marbuta (ة) → ه
     text = re.sub(r'ة', 'ه', text)
     # Alef maqsura (ى) → ا
     text = re.sub(r'ى', 'ا', text)
-    # Remove diacritics (tashkeel)
-    text = re.sub(r'[\u064B-\u065F]', '', text)
+    # Remove diacritics (tashkeel) and tatweel (ـ)
+    text = re.sub(r'[\u064B-\u065F\u0640]', '', text)
     return text
+
+
+# ── camel-tools spell correction (optional — graceful fallback if not installed) ─
+
+_spell_checker = None
+_spell_checker_loaded = False
+
+
+def _load_spell_checker():
+    """Lazy-load camel-tools SpellChecker once. Returns None if not installed."""
+    global _spell_checker, _spell_checker_loaded
+    if _spell_checker_loaded:
+        return _spell_checker
+    _spell_checker_loaded = True
+    try:
+        from camel_tools.spell import SpellChecker
+        _spell_checker = SpellChecker.pretrained()
+        print("[camel-tools] Arabic spell checker loaded.")
+    except Exception as e:
+        print(f"[camel-tools] Spell checker unavailable — using basic normalization. ({e})")
+        _spell_checker = None
+    return _spell_checker
+
+
+def spell_correct_arabic(text: str) -> str:
+    """
+    Correct Arabic typos using camel-tools MSA spell checker.
+
+    Runs AFTER normalize_intent() so dialect slang is already mapped to
+    standard Arabic before spell correction is attempted. Only applied to
+    text that contains Arabic characters. Returns text unchanged if
+    camel-tools is not installed or correction fails.
+    """
+    if not any('\u0600' <= c <= '\u06FF' for c in text):
+        return text   # English-only query — skip
+    checker = _load_spell_checker()
+    if checker is None:
+        return text
+    try:
+        corrected = checker.correct(text)
+        return corrected if corrected else text
+    except Exception:
+        return text
 
 
 def is_arabic(text):
@@ -424,14 +467,15 @@ def normalize_intent(text: str) -> str:
 def build_embed_query(question, history):
     """
     Build the text to embed for FAQ/RAG matching.
-    Pipeline: follow-up expansion → Arabic normalization → intent normalization.
+    Pipeline: follow-up expansion → Arabic normalization → intent normalization → spell correction.
     """
     if history and is_followup(question):
         query = f"{history[-1]['question']} {question}"
     else:
         query = question
-    query = normalize_arabic(query)
-    query = normalize_intent(query)   # dialect/slang → standard academic Arabic
+    query = normalize_arabic(query)          # character-level: alef/taa/diacritics
+    query = normalize_intent(query)          # dialect/slang → standard academic Arabic
+    query = spell_correct_arabic(query)      # camel-tools: fix remaining typos
     return query
 
 
