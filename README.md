@@ -23,7 +23,7 @@ Includes a React web UI with UOB branding and a FastAPI backend.
 - **Dialect normalization** — 70+ Gulf slang/loanword mappings convert terms like "الفاينل", "الميدترم", "دروب", "السيمستر" to standard academic Arabic before embedding — no model retraining needed
 - **FAQ-first** — 36 FAQ entries with 650+ question variants handle ~90% of questions with zero LLM cost
 - **Streaming responses** — LLM answers type out token by token via SSE; FAQ answers appear instantly
-- **Date-aware routing** — 70+ date-sensitive patterns intercept questions like "is registration open?", "did I miss it?", "withdrawal deadline", "اخر يوم دراسي", "الحين", "لسا", "الجاي" and route them to the LLM instead of returning a static FAQ answer
+- **Date-aware routing** — 70+ date-sensitive patterns intercept questions like "is registration open?", "did I miss it?", "withdrawal deadline", "اخر يوم دراسي", "الحين",  "الجاي" and route them to the LLM instead of returning a static FAQ answer
 - **Upcoming vs past** — bot correctly returns upcoming events, not already-past ones (e.g. asking "when are finals?" in April 2026 returns June 2026 finals, not December 2025)
 - **RAG fallback** — only the top 4 relevant calendar chunks are sent to the LLM, never the full document
 - **Conversation memory** — remembers last 10 turns; detects English and Arabic follow-up phrases ("بس", "لكن", "يعني") and expands the embed query with prior context
