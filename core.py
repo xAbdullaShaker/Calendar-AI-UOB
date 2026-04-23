@@ -400,16 +400,13 @@ def _load_spell_checker():
         _spell_checker = SpellChecker.pretrained()
         print("[camel-tools] Arabic spell checker loaded.")
     except ImportError:
-        # Package is missing — raise with install instructions
-        raise RuntimeError(
-            "[camel-tools] Package not installed. Run: pip install camel-tools"
-        )
+        # Package is missing — log and continue without spell correction
+        print("[camel-tools] Package not installed. Arabic spell correction disabled. Run: pip install camel-tools")
+        _spell_checker = None
     except Exception as e:
-        # Package installed but model failed to load — raise with diagnostic command
-        raise RuntimeError(
-            f"[camel-tools] Spell checker failed to load: {e}\n"
-            "Run: python -c \"from camel_tools.spell import SpellChecker; SpellChecker.pretrained()\""
-        )
+        # Package installed but model failed to load — log and continue without spell correction
+        print(f"[camel-tools] Spell checker failed to load: {e}. Arabic spell correction disabled.")
+        _spell_checker = None
     return _spell_checker
 
 

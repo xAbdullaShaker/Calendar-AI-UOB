@@ -29,7 +29,7 @@ from core import (
     find_top_faq_matches, retrieve_top_chunks,
     faq_domain_matches, build_faq_response, is_date_sensitive,
     ask_llm, ask_llm_stream,
-    load_faq_answers,
+    load_faq_answers, GREETINGS,
 )
 
 # Load environment variables from .env (OPENAI_API_KEY, SUPABASE_URL, etc.)
@@ -117,14 +117,64 @@ faq_answers = load_faq_answers()
 # Create rate limiter instance (shared across all requests)
 rate_limiter = RateLimiter()
 
-# Load embeddings into memory or use database depending on environment
+
+def _validate_db() -> bool:
+    """
+    Test the DB vector search with a dummy query to confirm dimensions match.
+
+    We probe both match_faq and match_calendar with a zero vector of the correct
+    embedding dimension. If either call returns a dimension-mismatch error (Postgres
+    code 22000) it means the DB was populated with a different model — fall back to
+    numpy so the server still works correctly.
+
+    Returns True if the DB is healthy, False if we should fall back to numpy.
+    """
+    try:
+        from db import _get_client
+        dummy = [0.0] * 3072  # must match EMBED_MODEL (text-embedding-3-large)
+        _get_client().rpc("match_faq", {
+            "query_embedding": dummy,
+            "match_threshold": 0.0,
+            "match_count": 1,
+        }).execute()
+        _get_client().rpc("match_calendar", {
+            "query_embedding": dummy,
+            "match_count": 1,
+        }).execute()
+        return True
+    except Exception as e:
+        err = str(e)
+        if "different vector dimensions" in err:
+            print(
+                "[STARTUP] DB vector dimension mismatch — the DB was populated with a "
+                "different embedding model. Falling back to numpy (local JSON files).\n"
+                "[STARTUP] To fix: re-run migrate_to_pgvector.py after clearing the DB "
+                "tables and updating the SQL RPC functions to use vector(3072)."
+            )
+        else:
+            print(f"[STARTUP] DB health check failed: {e}. Falling back to numpy.")
+        return False
+
+
+# Load embeddings into memory or use database depending on environment.
+# If the DB health check fails (e.g. vector dimension mismatch from a stale migration),
+# override core.USE_DB so all retrieval functions fall back to numpy automatically.
+import core as _core
+
 if USE_DB:
-    # pgvector mode — embeddings stay in PostgreSQL, no local files needed
-    faq_embeddings = None
-    calendar_chunks = None
-    print("pgvector mode: embeddings served from PostgreSQL")
+    if _validate_db():
+        # pgvector mode — embeddings stay in PostgreSQL, no local files needed
+        faq_embeddings = None
+        calendar_chunks = None
+        print("pgvector mode: embeddings served from PostgreSQL")
+    else:
+        # DB unhealthy — force numpy mode for all retrieval functions
+        _core.USE_DB = False
+        faq_embeddings = load_embeddings()
+        calendar_chunks = load_calendar_chunks()
+        print(f"numpy fallback mode: {len(faq_embeddings)} FAQ entries, {len(calendar_chunks)} calendar chunks loaded")
 else:
-    # numpy mode — load everything into RAM from local JSON files
+    # numpy mode — SUPABASE_URL not set
     faq_embeddings = load_embeddings()
     calendar_chunks = load_calendar_chunks()
     print(f"numpy mode: {len(faq_embeddings)} FAQ entries, {len(calendar_chunks)} calendar chunks loaded")
@@ -226,9 +276,25 @@ def chat_stream(req: ChatRequest):
         # Input was rejected entirely (gibberish, symbols only, etc.)
         raise HTTPException(status_code=400, detail=warning)
 
+    # ── Step 2.5: Short-circuit greetings before the embedding pipeline ─────────
+    arabic = is_arabic(clean)
+    normalized_clean = clean.strip().lower()
+    if normalized_clean in GREETINGS:
+        greeting_entry = {"id": "greeting"}
+        result = build_faq_response(greeting_entry, arabic, 1.0, faq_answers)
+
+        def greeting_stream():
+            yield f"data: {json.dumps({'type': 'token', 'text': result['response']})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'source': 'FAQ match: 100%', 'warning': warning})}\n\n"
+
+        return StreamingResponse(
+            greeting_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
     # ── Step 3: Load session history and build embed query ────────────────────
     history = sessions.get(req.session_id, [])
-    arabic = is_arabic(clean)
 
     # Build the normalized query: expands follow-ups, maps dialect, corrects typos
     embed_query = build_embed_query(clean, history)
