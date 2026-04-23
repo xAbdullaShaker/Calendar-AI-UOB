@@ -299,9 +299,87 @@ The LLM answers relative to today without ever echoing the date back to the user
 
 ---
 
+## Intent Normalization Layer
+
+Before any embedding happens, every query passes through a **multilingual intent mapping layer** (`INTENT_MAP` in `core.py`). This is the primary fix for queries that mean the same thing but are phrased differently across Arabic, English, and phonetic transliteration.
+
+### Why it exists
+
+The embedding model treats "add and drop", "الحذف والإضافة", and "الأد والدروب" as different vector clusters, even though they all mean the same thing. Without intervention:
+- `"add and drop"` → normalize_intent → `"registration drop add"` (odd phrase, weak embedding)
+- `"الأد والدروب"` → normalize_intent → `"الحذف والإضافة"` (good Arabic, but different cluster)
+
+These don't reliably match the same FAQ entry.
+
+### How it works
+
+For each intent, a list of trigger patterns is defined. When ANY trigger matches the user's query, the **canonical bilingual string** is **appended** (not replaced). This pulls the embedding toward the correct FAQ cluster for both Arabic and English simultaneously.
+
+```
+"add and drop"     →  "add and drop add drop registration الحذف والإضافة"
+"الأد والدروب"    →  "الأد والدروب add drop registration الحذف والإضافة"
+"الحذف والإضافة"  →  already canonical, no change
+```
+
+All three now embed in the same region → same FAQ entry matches.
+
+### Supported intents
+
+| Intent ID | Canonical form | Example triggers |
+|---|---|---|
+| `add_drop` | `add drop registration الحذف والإضافة` | "add and drop", "الأد والدروب", "الاد اند دروب", "drop add" |
+| `final_exams` | `final exams الامتحانات النهائية` | "finals", "الفاينل", "فاينلز", "الاختبارات النهائية" |
+| `midterms` | `midterm exam الامتحان النصفي منتصف الفصل` | "midterm", "الميد", "ميدترم", "منتصف الفصل" |
+| `withdrawal` | `student withdrawal W grade الانسحاب من المقررات` | "withdrawal", "الانسحاب", "سحب مادة", "w grade" |
+| `results` | `exam results grades النتائج الدرجات` | "results", "النتائج", "النتايج", "رزلتس" |
+| `preliminary_registration` | `preliminary registration التسجيل المبدئي` | "prelim", "بريليم", "التسجيل المبدئي" |
+| `semester_start` | `semester start date بداية الفصل الدراسي` | "semester start", "بداية الفصل", "متى يبدأ الفصل" |
+| `holidays` | `official university holidays الإجازات الرسمية` | "holidays", "الإجازات الرسمية", "العطل" |
+
+### Where the logic lives
+
+| Component | File | Description |
+|---|---|---|
+| `INTENT_MAP` | `core.py` | The intent definitions — triggers and canonical strings |
+| `normalize_to_intent()` | `core.py` | The function that applies the map to a query |
+| `build_embed_query()` | `core.py` | The pipeline — intent mapping runs as step 2 |
+
+### How to add new terms
+
+No re-embedding required — this runs at query time only.
+
+1. Open `core.py` and find `INTENT_MAP`
+2. Find the relevant intent entry (e.g. `"add_drop"`)
+3. Add your new term to the `"triggers"` list:
+   ```python
+   "triggers": [
+       ...
+       "your new term here",   # add it here
+   ]
+   ```
+4. Save and restart the server — that's it
+
+To add a **new intent** entirely, add a new dict to `INTENT_MAP`:
+```python
+{
+    "id": "your_intent_id",
+    "canonical": "english canonical Arabic canonical",
+    "triggers": [
+        "english variant 1", "english variant 2",
+        "Arabic variant 1", "phonetic variant",
+    ]
+},
+```
+
+### Does this affect English queries?
+
+No. If the query contains no trigger from any intent, `normalize_to_intent()` returns it unchanged. The rest of the pipeline runs exactly as before.
+
+---
+
 ## Arabic Processing Pipeline
 
-Before embedding, every Arabic query passes through three layers of normalization. The same transformations are applied when generating FAQ embeddings, so both sides match consistently.
+Before embedding, every Arabic query passes through **four layers** of normalization. The same transformations are applied when generating FAQ embeddings, so both sides match consistently.
 
 ### Layer 1 — Character Normalization
 

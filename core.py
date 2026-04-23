@@ -6,6 +6,7 @@ Edit here once — both interfaces pick up the change automatically.
 This file contains:
 - Configuration constants
 - FAQ domain guard (prevents wrong FAQ matches)
+- INTENT_MAP: multilingual synonym mapping layer (Arabic, English, phonetic)
 - Arabic text normalization (characters, dialect, spell correction)
 - FAQ and RAG retrieval functions
 - LLM call functions (streaming and non-streaming)
@@ -582,8 +583,8 @@ DIALECT_NORMALIZATIONS = [
     ("الاد اند دروب",        "الحذف والإضافة"),
     ("الأد اند دروب",        "الحذف والإضافة"),
     ("ادد اند دروب",         "الحذف والإضافة"),
-    ("add and drop",         "registration drop add"),
-    ("drop and add",         "registration drop add"),
+    ("add and drop",         "add drop registration الحذف والإضافة"),
+    ("drop and add",         "add drop registration الحذف والإضافة"),
     ("الاد والدروب",         "الحذف والإضافة"),
     ("الاد",                 "الإضافة"),
     ("الدروب",               "الحذف والإضافة"),
@@ -684,15 +685,185 @@ def normalize_intent(text: str) -> str:
     return result.strip()
 
 
+# ── Intent map — multilingual synonym layer ───────────────────────────────────
+#
+# WHY THIS EXISTS:
+#   The embedding model sees "add and drop" and "الحذف والإضافة" as different
+#   vector clusters even though they mean the same thing. After normalize_intent(),
+#   "add and drop" becomes "registration drop add" (a weak, odd phrase) while
+#   "الأد والدروب" becomes "الحذف والإضافة" (good Arabic). They don't land near
+#   the same FAQ entry.
+#
+# HOW IT WORKS:
+#   For each intent, we define a list of trigger patterns (Arabic, English, phonetic).
+#   When ANY trigger matches the user's query, we APPEND the canonical bilingual string.
+#   This pulls the embedding toward the right FAQ cluster for both languages.
+#   We append (not replace) to preserve original context for RAG chunk retrieval.
+#
+# WHEN IT RUNS:
+#   normalize_to_intent() runs BEFORE normalize_arabic() so triggers use natural
+#   Arabic spelling. Internally it applies normalize_arabic() only for matching.
+#
+# HOW TO ADD NEW TERMS:
+#   1. Find the relevant intent entry below (or add a new one with a new "id").
+#   2. Add your new term to the "triggers" list.
+#   3. No re-embedding needed — this runs at query time only.
+#
+INTENT_MAP = [
+    {
+        "id": "add_drop",
+        # Canonical: both Arabic and English so the embedding lands near both FAQ variants
+        "canonical": "add drop registration الحذف والإضافة",
+        "triggers": [
+            # English
+            "add and drop", "drop and add", "add drop", "drop add",
+            "add/drop", "drop/add", "add & drop",
+            # Arabic standard
+            "الحذف والإضافة", "حذف والإضافة", "الحذف والاضافة",
+            "حذف وإضافة", "الحذف و الإضافة",
+            # Phonetic transliterations (Gulf student slang)
+            "الأد والدروب", "الاد والدروب", "الأد اند دروب", "الاد اند دروب",
+            "الأد والدرووب", "الاد والدرووب", "ادد اند دروب", "أد اند دروب",
+            # Short forms
+            "الدروب", "دروب",
+        ]
+    },
+    {
+        "id": "final_exams",
+        "canonical": "final exams الامتحانات النهائية",
+        "triggers": [
+            # English
+            "finals", "final exam", "final exams", "final test",
+            # Arabic standard
+            "الامتحانات النهائية", "امتحانات نهائية",
+            "الاختبارات النهائية", "اختبارات نهائية",
+            "الامتحان النهائي", "امتحان نهائي",
+            # Phonetic / loanwords
+            "الفاينل", "فاينل", "الفاينلز", "فاينلز",
+            "الفينال", "فينال", "الفينالز",
+        ]
+    },
+    {
+        "id": "midterms",
+        "canonical": "midterm exam الامتحان النصفي منتصف الفصل",
+        "triggers": [
+            # English
+            "midterm", "midterms", "mid term", "mid-term",
+            # Phonetic
+            "الميد", "ميد", "الميدترم", "ميدترم", "الميد ترم", "ميد ترم",
+            # Arabic standard
+            "الامتحان النصفي", "امتحان نصفي",
+            "امتحانات منتصف الفصل", "منتصف الفصل",
+        ]
+    },
+    {
+        "id": "withdrawal",
+        "canonical": "student withdrawal W grade الانسحاب من المقررات",
+        "triggers": [
+            # English
+            "withdrawal", "withdraw", "w grade", "w-grade",
+            "course withdrawal", "drop with w",
+            # Arabic standard
+            "الانسحاب من المقررات", "انسحاب من المقررات",
+            "الانسحاب", "موعد الانسحاب",
+            # Colloquial
+            "سحب مادة", "سحب مواد",
+        ]
+    },
+    {
+        "id": "results",
+        "canonical": "exam results grades النتائج الدرجات",
+        "triggers": [
+            # English
+            "results", "grades", "grade results", "exam results",
+            # Arabic standard
+            "النتائج", "نتائج", "الدرجات", "درجات",
+            # Slang
+            "النتايج", "نتايج", "رزلتس", "رزلت",
+        ]
+    },
+    {
+        "id": "preliminary_registration",
+        "canonical": "preliminary registration التسجيل المبدئي",
+        "triggers": [
+            # English
+            "preliminary registration", "prelim registration",
+            "prelim", "pre-registration",
+            # Arabic standard
+            "التسجيل المبدئي", "تسجيل مبدئي",
+            # Phonetic
+            "بريليم", "بريلم",
+        ]
+    },
+    {
+        "id": "semester_start",
+        "canonical": "semester start date بداية الفصل الدراسي",
+        "triggers": [
+            # English
+            "semester start", "classes begin", "first day of class",
+            # Arabic standard
+            "بداية الفصل", "بدء الدراسة", "أول يوم دراسي", "بداية الدراسة",
+            # Colloquial
+            "امتى يبدأ الفصل", "ايمتى يبدأ الفصل", "متى يبدأ الفصل",
+        ]
+    },
+    {
+        "id": "holidays",
+        "canonical": "official university holidays الإجازات الرسمية",
+        "triggers": [
+            # English
+            "holidays", "official holidays", "university holidays", "public holidays",
+            # Arabic standard
+            "الإجازات الرسمية", "إجازات رسمية", "الإجازات", "العطل الرسمية",
+            # Colloquial
+            "الإجازات الجامعية", "إجازة الجامعة",
+        ]
+    },
+]
+
+
+def normalize_to_intent(query: str) -> str:
+    """
+    Detect intent from the raw query and append the canonical bilingual form.
+
+    This is the FIRST step in the embed pipeline. It runs on the original
+    (un-normalized) text so triggers can use natural Arabic spelling.
+    Internally applies normalize_arabic() only for trigger matching — the
+    returned string still contains the user's original text.
+
+    If ANY trigger for an intent appears in the query (after character normalization),
+    the canonical bilingual string is appended. This pulls the embedding vector
+    toward the correct FAQ cluster for both Arabic and English simultaneously.
+
+    Returns the query unchanged if no intent matches.
+    """
+    # Apply character normalization for matching only (أ→ا, ة→ه, ى→ا)
+    q_norm = normalize_arabic(query.lower())
+
+    for intent in INTENT_MAP:
+        for trigger in intent["triggers"]:
+            # Normalize the trigger the same way for a fair comparison
+            t_norm = normalize_arabic(trigger.lower())
+            if t_norm in q_norm:
+                canonical = intent["canonical"]
+                # Only append if the canonical isn't already present
+                if normalize_arabic(canonical.lower()) not in q_norm:
+                    return f"{query} {canonical}"
+                return query  # canonical already in query, no change needed
+
+    return query
+
+
 def build_embed_query(question, history):
     """
     Build the final text to embed for FAQ and RAG matching.
 
     Applies the full normalization pipeline in order:
     1. Follow-up expansion: if this is a follow-up, prepend the previous question
-    2. Arabic normalization: unify character variants (alef, taa marbuta, etc.)
-    3. Intent normalization: map dialect/slang → standard academic Arabic
-    4. Spell correction: fix remaining Arabic typos using camel-tools
+    2. Intent mapping: detect intent and append canonical bilingual form (INTENT_MAP)
+    3. Arabic normalization: unify character variants (alef, taa marbuta, etc.)
+    4. Dialect normalization: map slang/loanwords → standard academic Arabic
+    5. Spell correction: fix remaining Arabic typos using camel-tools
 
     The output is what gets sent to OpenAI's embedding API — not shown to the user.
     """
@@ -702,13 +873,16 @@ def build_embed_query(question, history):
     else:
         query = question
 
-    # Step 2: Character-level Arabic normalization
+    # Step 2: Intent mapping — append canonical bilingual form if intent detected
+    query = normalize_to_intent(query)
+
+    # Step 3: Character-level Arabic normalization
     query = normalize_arabic(query)
 
-    # Step 3: Dialect/slang → standard Arabic
+    # Step 4: Dialect/slang → standard Arabic
     query = normalize_intent(query)
 
-    # Step 4: Spell correction for remaining typos
+    # Step 5: Spell correction for remaining typos
     query = spell_correct_arabic(query)
 
     return query
