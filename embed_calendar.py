@@ -171,7 +171,7 @@ def main():
     print("Embedding chunks...")
     response = client.embeddings.create(
         input=chunks,
-        model="text-embedding-3-small",
+        model="text-embedding-3-large",
     )
 
     results = [

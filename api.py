@@ -17,10 +17,10 @@ from pydantic import BaseModel
 from core import (
     client,
     USE_DB,
-    SIMILARITY_THRESHOLD, MAX_HISTORY,
+    SIMILARITY_THRESHOLD, AMBIGUITY_GAP, MAX_HISTORY,
     sanitize_input, is_arabic, build_embed_query,
-    find_best_faq_match, retrieve_top_chunks,
-    build_faq_response, is_date_sensitive,
+    find_top_faq_matches, retrieve_top_chunks,
+    faq_domain_matches, build_faq_response, is_date_sensitive,
     ask_llm, ask_llm_stream,
     load_faq_answers,
 )
@@ -109,13 +109,34 @@ class ChatResponse(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+EMBED_MODEL = "text-embedding-3-large"
+
+
 def get_embed(text: str):
     try:
-        resp = client.embeddings.create(input=[text], model="text-embedding-3-small")
+        resp = client.embeddings.create(input=[text], model=EMBED_MODEL)
         return resp.data[0].embedding
     except Exception as e:
         print(f"[get_embed ERROR] {e}")
         return None
+
+
+def log_query(question: str, faq_id: str, score: float, source: str, answer: str):
+    """Append one row to query_log.csv for post-hoc quality review."""
+    import csv, datetime
+    row = [
+        datetime.datetime.now().isoformat(),
+        question,
+        faq_id,
+        f"{score:.2%}",
+        source,
+        answer[:300].replace("\n", " "),
+    ]
+    try:
+        with open("query_log.csv", "a", encoding="utf-8", newline="") as f:
+            csv.writer(f).writerow(row)
+    except Exception as e:
+        print(f"[log_query ERROR] {e}")
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -139,29 +160,47 @@ def chat_stream(req: ChatRequest):
     if question_embedding is None:
         raise HTTPException(status_code=503, detail="AI service unavailable. Please try again.")
 
-    best_entry, score = find_best_faq_match(question_embedding, faq_embeddings)
+    top_matches = find_top_faq_matches(question_embedding, faq_embeddings)
+    best_entry, score = top_matches[0] if top_matches else (None, 0.0)
+    second_score = top_matches[1][1] if len(top_matches) > 1 else 0.0
+    ambiguous = (score - second_score) < AMBIGUITY_GAP
 
     def generate():
         answer_text = ""
-        source = f"RAG fallback — {score:.0%}"  # default; overwritten below
+        source = f"RAG fallback — {score:.0%}"
         try:
-            print(f"[FAQ] best={best_entry}, score={score:.0%}, date_sensitive={is_date_sensitive(clean)}")
-            if score >= SIMILARITY_THRESHOLD and not is_date_sensitive(clean):
+            date_sensitive = is_date_sensitive(embed_query)   # run on normalized query
+            domain_ok = faq_domain_matches(clean, best_entry["id"]) if best_entry else False
+
+            print(
+                f"[FAQ] best={best_entry}, score={score:.0%}, second={second_score:.0%}, "
+                f"ambiguous={ambiguous}, date_sensitive={date_sensitive}, domain_ok={domain_ok}"
+            )
+
+            if (score >= SIMILARITY_THRESHOLD
+                    and not date_sensitive
+                    and not ambiguous
+                    and domain_ok):
                 result = build_faq_response(best_entry, arabic, score, faq_answers)
                 answer_text = result["response"]
                 source = f"FAQ match: {score:.0%}"
                 yield f"data: {json.dumps({'type': 'token', 'text': answer_text})}\n\n"
             else:
                 top_chunks = retrieve_top_chunks(question_embedding, calendar_chunks)
-                source = (
-                    f"RAG (date-sensitive) — {score:.0%}"
-                    if score >= SIMILARITY_THRESHOLD
-                    else f"RAG fallback — {score:.0%}"
-                )
+                if date_sensitive:
+                    source = f"RAG (date-sensitive) — {score:.0%}"
+                elif ambiguous:
+                    source = f"RAG (ambiguous match) — {score:.0%}"
+                elif not domain_ok:
+                    source = f"RAG (domain mismatch) — {score:.0%}"
+                else:
+                    source = f"RAG fallback — {score:.0%}"
                 print(f"[RAG] chunks={len(top_chunks)}, source={source}")
                 for token in ask_llm_stream(clean, top_chunks, history, arabic=arabic):
                     answer_text += token
                     yield f"data: {json.dumps({'type': 'token', 'text': token})}\n\n"
+
+            log_query(clean, best_entry["id"] if best_entry else "none", score, source, answer_text)
 
             hist = sessions.get(req.session_id, [])
             hist.append({"question": clean, "answer": answer_text})

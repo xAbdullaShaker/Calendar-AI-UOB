@@ -20,8 +20,55 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 USE_DB = bool(os.getenv("SUPABASE_URL"))
 
 SIMILARITY_THRESHOLD = 0.70
+AMBIGUITY_GAP = 0.05      # if top-2 FAQ scores are within this, route to RAG
 TOP_K_CHUNKS = 4
 MAX_HISTORY = 10
+
+# ── FAQ domain keyword guard ──────────────────────────────────────────────────
+# Maps each FAQ id → list of keywords that MUST appear in the query for that
+# FAQ to be a valid match. If none match, the FAQ result is rejected and the
+# question is routed to RAG instead. Prevents high-scoring wrong matches
+# (e.g. "when does semester start" scoring 90% on midterms).
+# Entries without a guard entry are always allowed through.
+FAQ_DOMAIN_GUARD: dict[str, list[str]] = {
+    "greeting":                 ["hi", "hello", "hey", "سلام", "مرحب", "هاي", "هلا", "أهلاً", "اهلا"],
+    "midterms":                 ["ميد", "midterm", "نصفي", "منتصف"],
+    "fall_finals":              ["نهائي", "فاينل", "final", "امتحان", "اختبار", "exam"],
+    "spring_finals":            ["نهائي", "فاينل", "final", "امتحان", "اختبار", "exam"],
+    "summer_finals":            ["نهائي", "فاينل", "final", "امتحان", "اختبار", "exam", "صيف", "summer"],
+    "fall_start":               ["يبدأ", "يبد", "تبدأ", "تبد", "بداية", "أول", "اول", "start", "begin"],
+    "spring_start":             ["يبدأ", "يبد", "تبدأ", "تبد", "بداية", "أول", "اول", "start", "begin", "ثاني", "second", "spring"],
+    "summer_start":             ["يبدأ", "يبد", "تبدأ", "تبد", "بداية", "أول", "اول", "start", "begin", "صيف", "summer", "صيفي"],
+    "fall_end":                 ["ينتهي", "آخر", "اخر", "نهاية", "end", "last", "انتهاء"],
+    "fall_drop_add":            ["حذف", "إضافة", "اضافة", "drop", "add", "دروب", "اد"],
+    "spring_drop_add":          ["حذف", "إضافة", "اضافة", "drop", "add", "دروب", "اد"],
+    "summer_drop":              ["حذف", "إضافة", "اضافة", "drop", "add", "صيف", "summer"],
+    "fall_withdrawal_w":        ["انسحاب", "withdraw", "سحب", "w grade"],
+    "spring_withdrawal_w":      ["انسحاب", "withdraw", "سحب"],
+    "fall_results":             ["نتائج", "نتيجة", "result", "درجات", "grade"],
+    "spring_results":           ["نتائج", "نتيجة", "result", "درجات", "grade"],
+    "summer_results":           ["نتائج", "نتيجة", "result", "درجات", "grade", "صيف", "summer"],
+    "national_day":             ["وطني", "national", "جلوس", "accession"],
+    "eid_fitr":                 ["فطر", "fitr", "عيد", "eid"],
+    "eid_adha":                 ["أضحى", "اضحى", "adha", "عيد", "eid"],
+    "ramadan_start":            ["رمضان", "ramadan"],
+    "prophet_birthday":         ["مولد", "نبوي", "prophet", "muhammad"],
+    "ashura":                   ["عاشوراء", "عاشوراء", "ashura"],
+    "hijri_new_year":           ["هجري", "hijri", "هجرية"],
+    "new_year":                 ["new year", "رأس السنة", "ميلادي", "january"],
+    "labour_day":               ["عمال", "labour", "labor"],
+    "all_holidays":             ["إجازة", "اجازة", "holiday", "عطلة", "إجازات"],
+    "last_day_drop_refund":     ["استرجاع", "refund", "رسوم", "حذف", "drop"],
+    "deferral_deadline":        ["تأجيل", "deferral", "defer"],
+    "grade_appeal":             ["تظلم", "appeal", "درجة"],
+    "transfer_period":          ["تحويل", "transfer"],
+    "admission_tests":          ["قبول", "admission", "اختبار قبول", "interview"],
+    "academic_advising":        ["إرشاد", "ارشاد", "advising", "advisor"],
+    "preliminary_registration": ["تسجيل مبدئي", "preliminary", "بريلم", "prelim", "تسجيل"],
+    "english_test_grad":        ["إنجليزي", "انجليزي", "english", "ielts", "toefl", "دراسات عليا"],
+    "faculty_report":           ["هيئة التدريس", "faculty", "أستاذ", "استاذ"],
+    "tuition_fees":             ["رسوم", "tuition", "fees", "مالي", "دفع"],
+}
 
 FOLLOWUP_PRONOUNS = {"it", "that", "those", "them", "they", "this", "these"}
 GREETINGS = {"hi", "hello", "hey", "salam", "السلام", "مرحبا", "مرحباً", "هاي", "هلا", "أهلاً", "اهلا", "هلو"}
@@ -330,6 +377,19 @@ def sanitize_input(text):
     return text, warning
 
 
+def faq_domain_matches(question: str, faq_id: str) -> bool:
+    """
+    Return True if the question contains at least one keyword associated with
+    the matched FAQ entry. Prevents high-scoring but topically wrong FAQ matches.
+    Entries without a guard entry in FAQ_DOMAIN_GUARD always pass through.
+    """
+    keywords = FAQ_DOMAIN_GUARD.get(faq_id)
+    if not keywords:
+        return True
+    q = question.lower()
+    return any(k in q for k in keywords)
+
+
 def is_date_sensitive(question):
     """Return True if the question requires knowing today's date to answer correctly."""
     lower = question.lower()
@@ -519,6 +579,24 @@ def find_best_faq_match(question_embedding, faq_embeddings=None):
                 best_score = score
                 best_entry = entry
     return best_entry, best_score
+
+
+def find_top_faq_matches(question_embedding, faq_embeddings=None, k=3):
+    """
+    Return the top-k FAQ matches as [(entry_dict, score), ...] sorted best-first.
+    Uses pgvector DB if SUPABASE_URL is set (returns top-1 only for DB path).
+    """
+    if USE_DB:
+        from db import find_best_faq_match_db
+        faq_id, score = find_best_faq_match_db(question_embedding)
+        return [({"id": faq_id}, score)]
+    # numpy fallback — score every entry and return top-k
+    scored = []
+    for entry in (faq_embeddings or []):
+        best = max(cosine_similarity(question_embedding, e) for e in entry["embeddings"])
+        scored.append((entry, best))
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return [(entry, score) for entry, score in scored[:k]]
 
 
 def retrieve_top_chunks(question_embedding, calendar_chunks=None, top_k=TOP_K_CHUNKS):

@@ -3,7 +3,7 @@ embed_faq.py — Run this ONCE to convert FAQ questions to embeddings.
 Re-run whenever you update uob_faq.json.
 
 Usage:
-    pip install cohere python-dotenv
+    pip install openai python-dotenv
     python embed_faq.py
 """
 
@@ -37,7 +37,7 @@ for entry in faq:
     normalized_questions = [normalize_arabic(q) for q in entry["questions"]]
     response = client.embeddings.create(
         input=normalized_questions,
-        model="text-embedding-3-small",
+        model="text-embedding-3-large",
     )
     embeddings = [r.embedding for r in response.data]
     results.append({
