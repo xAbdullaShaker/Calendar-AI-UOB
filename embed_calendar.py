@@ -1,5 +1,13 @@
 """
 embed_calendar.py — Chunk uob_calendar.md into individual events and embed each one.
+
+This script reads the academic calendar markdown file, splits it into one chunk
+per event row, appends Arabic keyword annotations so Arabic queries can find
+English calendar text, then sends everything to OpenAI for embedding.
+
+The output (calendar_embeddings.json) is what the server searches when the LLM
+path is triggered — the top 4 most relevant chunks are passed to the LLM as context.
+
 Run this once (or whenever the calendar is updated).
 
 Output: calendar_embeddings.json
@@ -15,14 +23,23 @@ import re
 from dotenv import load_dotenv
 from openai import OpenAI
 
+# Load OPENAI_API_KEY from .env
 load_dotenv()
 
+# Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-# Arabic keyword annotations for common calendar events.
-# These are appended to each chunk so Arabic queries embed close enough
-# to match the English calendar text during cosine similarity search.
+# ── Arabic keyword annotations ────────────────────────────────────────────────
+#
+# The calendar is written entirely in English. If a student asks in Arabic,
+# their query vector won't match the English calendar chunks well.
+#
+# Solution: append Arabic keyword phrases to each chunk before embedding,
+# so Arabic queries land close to the right calendar events in vector space.
+#
+# Format: ([english_keywords_to_match], "arabic_annotation_to_append")
+#
 ARABIC_ANNOTATIONS = [
     # Withdrawal
     (["withdrawal period", "withdrawal with", "w grade", "w\" grade"],
@@ -115,19 +132,34 @@ ARABIC_ANNOTATIONS = [
 
 
 def annotate_arabic(event_text):
-    """Return Arabic keywords to append to a chunk based on its English content."""
+    """
+    Check if an event text matches any annotation rules and return the Arabic keywords.
+
+    Looks at the English event text and finds all matching annotation entries.
+    Returns the Arabic phrases joined by ' | ', or an empty string if no match.
+    These Arabic phrases are appended to the chunk before embedding.
+    """
     event_lower = event_text.lower()
     annotations = []
     for keywords, arabic in ARABIC_ANNOTATIONS:
+        # If any of the English keywords appear in this event, add the Arabic annotation
         if any(kw in event_lower for kw in keywords):
             annotations.append(arabic)
     return " | ".join(annotations) if annotations else ""
 
 
 def parse_chunks(filepath):
-    """Parse uob_calendar.md into one bilingual chunk per calendar event row."""
+    """
+    Parse uob_calendar.md and return a list of bilingual text chunks.
+
+    Each chunk represents one calendar event row. The format is:
+        "Section Name: Date — Event Description [Arabic keywords]"
+
+    The section name is taken from the nearest ## heading above the row.
+    Arabic keywords are appended where the annotation rules match.
+    """
     chunks = []
-    current_section = ""
+    current_section = ""  # tracks which semester/section we're currently inside
 
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.readlines()
@@ -135,28 +167,35 @@ def parse_chunks(filepath):
     for line in lines:
         line = line.strip()
 
-        # Detect section headers (## ...)
+        # ── Section headers (## First Semester, ## Second Semester, etc.) ──────
         if line.startswith("## "):
+            # Update the current section name (strip the ## prefix)
             current_section = line.lstrip("#").strip()
             continue
 
-        # Detect table rows (| date | event |), skip header and divider rows
+        # ── Table rows (| date | event |) ────────────────────────────────────
+        # Skip header rows ("Date", "Event") and divider rows ("---")
         if line.startswith("|") and "---" not in line and "Date" not in line and "Event" not in line:
-            # Strip markdown bold and leading/trailing pipes
+            # Remove markdown bold markers (**text** → text)
             clean = re.sub(r"\*\*(.+?)\*\*", r"\1", line)
+            # Split the row by | and strip whitespace from each cell
             parts = [p.strip() for p in clean.strip("|").split("|")]
             if len(parts) >= 2:
                 date = parts[0].strip()
                 event = parts[1].strip()
                 if date and event:
+                    # Look up Arabic keywords to append for cross-language matching
                     arabic = annotate_arabic(event)
+                    # Build the final chunk text: "Section: Date — Event [Arabic]"
                     chunk = f"{current_section}: {date} — {event}"
                     if arabic:
                         chunk += f" [{arabic}]"
                     chunks.append(chunk)
 
-        # Detect abbreviation lines (Key Abbreviations section)
+        # ── Abbreviation definitions (Key Abbreviations section) ─────────────
+        # Lines like: - **W** — Student-initiated withdrawal
         if line.startswith("- **") and "—" in line:
+            # Remove bold markers and the leading "- "
             clean = re.sub(r"\*\*(.+?)\*\*", r"\1", line).lstrip("- ").strip()
             chunk = f"Key Abbreviations: {clean}"
             chunks.append(chunk)
@@ -165,24 +204,34 @@ def parse_chunks(filepath):
 
 
 def main():
+    """
+    Main function — parse the calendar, embed all chunks, and save to JSON.
+    """
+    # Parse the calendar markdown into individual event chunks
     chunks = parse_chunks("uob_calendar.md")
     print(f"Parsed {len(chunks)} chunks from uob_calendar.md")
 
+    # Send all chunks to OpenAI in one API call — more efficient than one-by-one
     print("Embedding chunks...")
     response = client.embeddings.create(
         input=chunks,
-        model="text-embedding-3-large",
+        model="text-embedding-3-large",  # 3072-dimension model — better Arabic understanding
     )
 
+    # Pair each chunk text with its embedding vector
     results = [
         {"chunk": chunk, "embedding": r.embedding}
         for chunk, r in zip(chunks, response.data)
     ]
 
+    # Save to disk — this file is loaded at server startup for numpy mode,
+    # or uploaded to Supabase via migrate_to_pgvector.py for production mode
     with open("calendar_embeddings.json", "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
 
     print(f"Done. Saved {len(results)} chunks to calendar_embeddings.json")
+
+    # Show a few examples so you can verify the output looks correct
     print("\nSample chunks:")
     for c in results[:3]:
         print(f"  - {c['chunk']}")

@@ -1,6 +1,14 @@
 """
 eval_threshold.py — Find the optimal SIMILARITY_THRESHOLD for FAQ matching.
 
+This script runs a set of test questions through the FAQ matching system
+at multiple similarity thresholds and reports which threshold gives the
+best accuracy. Use this to decide what value to set SIMILARITY_THRESHOLD to in core.py.
+
+Note: This script still uses Cohere for embeddings (the original evaluation setup).
+      The live system uses OpenAI. Re-run with OpenAI embeddings if you want
+      results that reflect the current production embedding model.
+
 Usage:
     python eval_threshold.py
 """
@@ -11,12 +19,14 @@ import numpy as np
 from dotenv import load_dotenv
 import cohere
 
+# Load environment variables — needs COHERE_API_KEY in .env
 load_dotenv()
 co = cohere.Client(os.getenv("COHERE_API_KEY"))
 
 # ── Reuse helpers from chat.py ────────────────────────────────────────────────
 
 def load_embeddings():
+    """Load pre-computed FAQ embeddings from the local JSON file."""
     if not os.path.exists("faq_embeddings.json"):
         print("faq_embeddings.json not found. Run embed_faq.py first.")
         exit(1)
@@ -26,11 +36,20 @@ def load_embeddings():
 
 
 def cosine_similarity(a, b):
+    """
+    Compute cosine similarity between two vectors.
+    Returns a value between 0.0 (completely different) and 1.0 (identical direction).
+    Higher = more similar in meaning.
+    """
     a, b = np.array(a), np.array(b)
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
 def find_best_faq_match(question_embedding, faq_embeddings):
+    """
+    Find the FAQ entry with the highest cosine similarity to the question embedding.
+    Returns (best_entry, best_score).
+    """
     best_score = 0
     best_entry = None
     for entry in faq_embeddings:
@@ -43,8 +62,9 @@ def find_best_faq_match(question_embedding, faq_embeddings):
 
 
 # ── Test cases ────────────────────────────────────────────────────────────────
-# "expected": FAQ id string  →  should hit FAQ
-# "expected": None           →  should fall through to LLM
+# Each test case has a question and its expected outcome:
+#   "expected": "faq_id"  → this question should match that FAQ entry
+#   "expected": None      → this question should NOT match any FAQ (go to LLM)
 
 TEST_CASES = [
     # --- Exact / near-exact matches ---
@@ -83,7 +103,7 @@ TEST_CASES = [
     {"question": "متى fall semester يبدأ",                    "expected": "fall_start"},
     {"question": "when is عيد الفطر",                         "expected": "eid_fitr"},
 
-    # --- Out-of-scope (should fall through to LLM) ---
+    # --- Out-of-scope (should fall through to LLM, not match any FAQ) ---
     {"question": "how do I reset my UOB portal password",      "expected": None},
     {"question": "where is the library on campus",             "expected": None},
     {"question": "who is the president of UOB",                "expected": None},
@@ -100,6 +120,18 @@ TEST_CASES = [
 # ── Evaluation ────────────────────────────────────────────────────────────────
 
 def evaluate(faq_embeddings, embeddings_cache, thresholds):
+    """
+    Run every test case at every threshold and collect accuracy results.
+
+    For each threshold value, checks each test question:
+    - Embeds the question (from cache — already done in main)
+    - Finds the best FAQ match
+    - If score >= threshold → predicts that FAQ id
+    - If score < threshold → predicts None (LLM path)
+    - Compares prediction to expected value
+
+    Returns a dict: {threshold: {"accuracy": float, "errors": [...]}}
+    """
     results = {}
 
     for threshold in thresholds:
@@ -109,14 +141,20 @@ def evaluate(faq_embeddings, embeddings_cache, thresholds):
         for tc in TEST_CASES:
             q = tc["question"]
             expected = tc["expected"]
+
+            # Use pre-computed embedding from cache (avoids redundant API calls)
             q_emb = embeddings_cache[q]
 
+            # Find best FAQ match at this threshold
             best_entry, score = find_best_faq_match(q_emb, faq_embeddings)
+
+            # Predict FAQ id if score clears the threshold, otherwise None (→ LLM)
             matched_id = best_entry["id"] if score >= threshold else None
 
             if matched_id == expected:
                 correct += 1
             else:
+                # Record misclassifications for later review
                 errors.append({
                     "question": q,
                     "expected": expected,
@@ -131,20 +169,30 @@ def evaluate(faq_embeddings, embeddings_cache, thresholds):
 
 
 def main():
+    """
+    Load embeddings, embed all test questions, run evaluation across thresholds,
+    and print a summary table with the best threshold highlighted.
+    """
     print("Loading FAQ embeddings...")
     faq_embeddings = load_embeddings()
     print(f"  {len(faq_embeddings)} FAQ entries loaded")
 
+    # Collect all test questions into one list for a single batch API call
     questions = [tc["question"] for tc in TEST_CASES]
     print(f"\nEmbedding {len(questions)} test questions (single API call)...")
+
+    # Embed all questions at once using Cohere (cheaper than one-by-one)
     response = co.embed(
         texts=questions,
         model="embed-multilingual-v3.0",
         input_type="search_query",
     )
+
+    # Build a lookup dict: question text → embedding vector
     embeddings_cache = {q: emb for q, emb in zip(questions, response.embeddings)}
     print("  Done.\n")
 
+    # Test every threshold from 0.50 to 0.85 in steps of 0.05
     thresholds = [round(t, 2) for t in np.arange(0.50, 0.86, 0.05)]
     results = evaluate(faq_embeddings, embeddings_cache, thresholds)
 
@@ -161,6 +209,8 @@ def main():
         acc = r["accuracy"]
         n_correct = round(acc * total)
         n_errors = total - n_correct
+
+        # Mark the highest accuracy row as best
         marker = " << best" if acc > best_accuracy else ""
 
         if acc > best_accuracy:
@@ -174,6 +224,7 @@ def main():
     print(f"Recommended threshold: {best_threshold}  (accuracy {best_accuracy*100:.1f}%)")
     print(f"{'='*55}")
 
+    # Print each misclassified question so you can investigate and improve the FAQ
     errors = results[best_threshold]["errors"]
     if errors:
         print(f"\nMisclassified at {best_threshold} ({len(errors)} cases):\n")
