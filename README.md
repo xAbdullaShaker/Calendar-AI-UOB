@@ -95,7 +95,24 @@ USER SENDS A MESSAGE
                │
                ▼
 ┌───────────────────────────────┐
-│ 4. NORMALIZE ARABIC           │
+│ 4. INTENT NORMALIZATION       │
+│    Scan for trigger phrases   │
+│    in any language. If found, │
+│    append canonical bilingual │
+│    string to pull all variant │
+│    phrasings into the same    │
+│    embedding region:          │
+│    "الأد والدروب"  →          │
+│    "الأد والدروب add drop     │
+│     registration              │
+│     الحذف والإضافة"           │
+│    Runs before character &    │
+│    dialect normalization      │
+└──────────────┬────────────────┘
+               │
+               ▼
+┌───────────────────────────────┐
+│ 5. NORMALIZE ARABIC           │
 │    Unify character variants:  │
 │    أ / إ / آ / ٱ  →  ا       │
 │    ة  →  ه                    │
@@ -106,7 +123,7 @@ USER SENDS A MESSAGE
                │
                ▼
 ┌───────────────────────────────┐
-│ 5. DIALECT NORMALIZATION      │
+│ 6. DIALECT NORMALIZATION      │
 │    70+ Gulf/Khaleeji slang    │
 │    and loanword mappings:     │
 │    "الفاينل" → "الامتحانات   │
@@ -122,7 +139,7 @@ USER SENDS A MESSAGE
                │
                ▼
 ┌───────────────────────────────┐
-│ 6. SPELL CORRECTION           │
+│ 7. SPELL CORRECTION           │
 │    camel-tools MSA spell      │
 │    checker fixes remaining    │
 │    typos after slang is       │
@@ -131,13 +148,14 @@ USER SENDS A MESSAGE
 │      "الامتحانات"             │
 │    "تسيجل" → "تسجيل"         │
 │    "متا" → "متى"              │
-│    Graceful fallback if       │
-│    camel-tools not installed  │
+│    Required — server raises   │
+│    RuntimeError at startup    │
+│    if camel-tools not found   │
 └──────────────┬────────────────┘
                │
                ▼
 ┌───────────────────────────────┐
-│ 7. EMBED THE QUERY            │
+│ 8. EMBED THE QUERY            │
 │    OpenAI text-embedding-     │
 │    3-large converts the       │
 │    normalized question into   │
@@ -146,7 +164,7 @@ USER SENDS A MESSAGE
                │
                ▼
 ┌───────────────────────────────┐
-│ 8. SEARCH FAQ VECTORS         │
+│ 9. SEARCH FAQ VECTORS         │
 │    Compare query vector       │
 │    against all FAQ question   │
 │    vectors using cosine       │
@@ -161,7 +179,7 @@ USER SENDS A MESSAGE
         │              │
         ▼              │
 ┌──────────────────┐   │
-│ 9. AMBIGUOUS?    │   │
+│ 10. AMBIGUOUS?   │   │
 │                  │   │
 │ Is the gap       │   │
 │ between #1 and   │   │
@@ -174,7 +192,7 @@ USER SENDS A MESSAGE
    │           └───────┤
    ▼                   │
 ┌──────────────────┐   │
-│ 10. DATE-        │   │
+│ 11. DATE-        │   │
 │ SENSITIVE?       │   │
 │                  │   │
 │ Run on normalized│   │
@@ -190,7 +208,7 @@ USER SENDS A MESSAGE
    │           └───────┤
    ▼                   │
 ┌──────────────────┐   │
-│ 11. DOMAIN       │   │
+│ 12. DOMAIN       │   │
 │ GUARD            │   │
 │                  │   │
 │ Does the question│   │
@@ -236,7 +254,7 @@ USER SENDS A MESSAGE
                └─────────┬─────────┘
                          ▼
               ┌─────────────────────┐
-              │ 12. LOG TO CSV      │
+              │ 13. LOG TO CSV      │
               │ query_log.csv:      │
               │ timestamp | question│
               │ faq_id | score      │
@@ -301,27 +319,89 @@ The LLM answers relative to today without ever echoing the date back to the user
 
 ## Intent Normalization Layer
 
-Before any embedding happens, every query passes through a **multilingual intent mapping layer** (`INTENT_MAP` in `core.py`). This is the primary fix for queries that mean the same thing but are phrased differently across Arabic, English, and phonetic transliteration.
+Every query passes through `normalize_to_intent()` **before** character and dialect normalization (step 4 in the pipeline above). This is the primary fix for queries that mean the same thing but land in completely different embedding regions because of language, dialect, or phonetic spelling differences.
 
-### Why it exists
+### The problem
 
-The embedding model treats "add and drop", "الحذف والإضافة", and "الأد والدروب" as different vector clusters, even though they all mean the same thing. Without intervention:
-- `"add and drop"` → normalize_intent → `"registration drop add"` (odd phrase, weak embedding)
-- `"الأد والدروب"` → normalize_intent → `"الحذف والإضافة"` (good Arabic, but different cluster)
+The embedding model treats these three phrases as separate vector clusters, even though they all mean "add/drop period":
 
-These don't reliably match the same FAQ entry.
+| What the user types | Embedding region |
+|---|---|
+| `"add and drop"` | English "registration" cluster |
+| `"الحذف والإضافة"` | Formal Arabic cluster |
+| `"الأد والدروب"` | Phonetic/slang noise cluster |
+
+Without intervention, none of these reliably match the same FAQ entry.
 
 ### How it works
 
-For each intent, a list of trigger patterns is defined. When ANY trigger matches the user's query, the **canonical bilingual string** is **appended** (not replaced). This pulls the embedding toward the correct FAQ cluster for both Arabic and English simultaneously.
+```
+          USER QUERY
+               │
+    ┌──────────┴──────────────┐
+    │                         │
+    ▼                         │
+Does query contain            │
+any trigger phrase?           │
+(checked in order,            │
+ any language)                │
+    │                         │
+   YES                        NO
+    │                         │
+    ▼                         │
+Identify matching intent      │
+(e.g. "add_drop")             │
+    │                         │
+    ▼                         │
+Append canonical              │
+bilingual string              │
+after the original text:      │
+                              │
+"الأد والدروب"                │
+  → "الأد والدروب             │
+     add drop registration    │
+     الحذف والإضافة"          │
+    │                         │
+    └──────────┬──────────────┘
+               │
+               ▼
+       EXTENDED QUERY
+     (original + canonical)
+    → next pipeline step
+```
+
+All three input variants now contain the canonical bilingual string → they embed in the same region → they match the same FAQ entry.
+
+### Full pipeline trace
+
+Trace a single query through all 5 stages of `build_embed_query()`:
 
 ```
-"add and drop"     →  "add and drop add drop registration الحذف والإضافة"
-"الأد والدروب"    →  "الأد والدروب add drop registration الحذف والإضافة"
-"الحذف والإضافة"  →  already canonical, no change
-```
+INPUT: "الأد والدروب امتى"
+       (phonetic Arabic slang: "when is the add/drop period?")
 
-All three now embed in the same region → same FAQ entry matches.
+Step 1 — Follow-up expansion:
+  "الأد والدروب امتى"
+  (no follow-up detected, unchanged)
+
+Step 2 — Intent normalization:
+  "الأد والدروب امتى add drop registration الحذف والإضافة"
+  (trigger "الأد والدروب" matched → canonical appended)
+
+Step 3 — Character normalization:
+  "الاد والدروب امتى add drop registration الحذف والاضافه"
+  (أ/إ/آ → ا, ة → ه applied throughout)
+
+Step 4 — Dialect normalization:
+  "الحذف والاضافه متى add drop registration الحذف والاضافه"
+  ("الاد والدروب" → "الحذف والاضافه", "امتى" → "متى")
+
+Step 5 — Spell correction:
+  "الحذف والإضافة متى add drop registration الحذف والإضافة"
+  (camel-tools corrects "الاضافه" → "الإضافة")
+
+→ Embedded as a 3072-dim vector in the add/drop FAQ region ✓
+```
 
 ### Supported intents
 
@@ -338,28 +418,30 @@ All three now embed in the same region → same FAQ entry matches.
 
 ### Where the logic lives
 
-| Component | File | Description |
+| Component | File | Purpose |
 |---|---|---|
-| `INTENT_MAP` | `core.py` | The intent definitions — triggers and canonical strings |
-| `normalize_to_intent()` | `core.py` | The function that applies the map to a query |
-| `build_embed_query()` | `core.py` | The pipeline — intent mapping runs as step 2 |
+| `INTENT_MAP` | `core.py` | List of intent dicts — each has an `id`, `canonical` string, and `triggers` list |
+| `normalize_to_intent()` | `core.py` | Scans the query for any trigger; appends canonical string if matched |
+| `build_embed_query()` | `core.py` | Full 5-step pipeline — intent normalization runs as **step 2**, after follow-up expansion |
 
 ### How to add new terms
 
 No re-embedding required — this runs at query time only.
 
+To add a new trigger to an existing intent (e.g. a new slang term for "add/drop"):
+
 1. Open `core.py` and find `INTENT_MAP`
 2. Find the relevant intent entry (e.g. `"add_drop"`)
-3. Add your new term to the `"triggers"` list:
+3. Add the new term to `"triggers"`:
    ```python
    "triggers": [
        ...
-       "your new term here",   # add it here
+       "your new term here",
    ]
    ```
 4. Save and restart the server — that's it
 
-To add a **new intent** entirely, add a new dict to `INTENT_MAP`:
+To add a **new intent** entirely, append a new dict to `INTENT_MAP`:
 ```python
 {
     "id": "your_intent_id",
@@ -371,9 +453,11 @@ To add a **new intent** entirely, add a new dict to `INTENT_MAP`:
 },
 ```
 
-### Does this affect English queries?
+The canonical string should include both English and Arabic representations of the intent. This ensures the query embeds in the correct region regardless of which language the FAQ entry was written in.
 
-No. If the query contains no trigger from any intent, `normalize_to_intent()` returns it unchanged. The rest of the pipeline runs exactly as before.
+### Does this affect unmatched queries?
+
+No. If no trigger phrase matches, `normalize_to_intent()` returns the query unchanged and the remaining pipeline steps run exactly as before.
 
 ---
 
