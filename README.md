@@ -19,11 +19,13 @@ Includes a React web UI with UOB branding and a FastAPI backend.
 
 - **Bilingual** — detects Arabic vs English automatically; supports Gulf/Khaleeji dialect question variants
 - **Arabic normalization** — strips hamza/taa-marbuta/alef-maqsura/tatweel variants before embedding so "اول" and "أول" match identically
-- **Arabic spell correction** — [camel-tools](https://github.com/CAMeL-Lab/camel_tools) MSA spell checker auto-corrects typos (e.g. "الامتحانت" → "الامتحانات", "تسيجل" → "تسجيل") after dialect normalization, before embedding
-- **Dialect normalization** — 70+ Gulf slang/loanword mappings convert terms like "الفاينل", "الميدترم", "دروب", "السيمستر" to standard academic Arabic before embedding — no model retraining needed
-- **FAQ-first** — 36 FAQ entries with 650+ question variants handle ~90% of questions with zero LLM cost
+- **Arabic spell correction** — [camel-tools](https://github.com/CAMeL-Lab/camel_tools) MSA spell checker auto-corrects typos (e.g. "الامتحانت" → "الامتحانات", "تسيجل" → "تسجيل") after dialect normalization, before embedding — **required dependency**, server raises on startup if missing
+- **Dialect normalization** — 70+ Gulf slang/loanword mappings (including dropped-hamza variants like "يبد" → "يبدأ") convert terms like "الفاينل", "الميدترم", "دروب", "السيمستر" to standard academic Arabic before embedding — no model retraining needed
+- **FAQ-first** — 37 FAQ entries with 650+ question variants handle ~90% of questions with zero LLM cost
+- **FAQ domain guard** — 37-entry keyword map validates every FAQ match topically before returning it; prevents high-scoring wrong matches (e.g. "when does semester start" cannot match the midterms FAQ even at 90% similarity)
+- **Ambiguity detection** — retrieves top-3 FAQ candidates; if the top two scores are within 5% of each other the match is considered ambiguous and the question goes to the LLM instead of guessing wrong
 - **Streaming responses** — LLM answers type out token by token via SSE; FAQ answers appear instantly
-- **Date-aware routing** — 70+ date-sensitive patterns intercept questions like "is registration open?", "did I miss it?", "withdrawal deadline", "اخر يوم دراسي", "الحين",  "الجاي" and route them to the LLM instead of returning a static FAQ answer
+- **Date-aware routing** — 70+ date-sensitive patterns run on the *normalized* query (after dialect mapping) to catch Gulf dialect date phrases like "الحين", "لسا", "الجاي" and route them to the LLM instead of returning a static FAQ answer
 - **Upcoming vs past** — bot correctly returns upcoming events, not already-past ones (e.g. asking "when are finals?" in April 2026 returns June 2026 finals, not December 2025)
 - **RAG fallback** — only the top 4 relevant calendar chunks are sent to the LLM, never the full document
 - **Conversation memory** — remembers last 10 turns; detects English and Arabic follow-up phrases ("بس", "لكن", "يعني") and expands the embed query with prior context
@@ -44,14 +46,14 @@ Your data files are converted into vectors (numerical representations of meaning
 
 ```
 uob_faq.json          embed_faq.py        OpenAI Embed API
-(36 Q&A entries)  ──────────────────→  text-embedding-3-small
+(36 Q&A entries)  ──────────────────→  text-embedding-3-large
                                                │
                                                ↓
                                       faq_embeddings.json
                                       (vectors for every FAQ question)
 
 uob_calendar.md       embed_calendar.py   OpenAI Embed API
-(73 event rows)   ──────────────────→  text-embedding-3-small
+(73 event rows)   ──────────────────→  text-embedding-3-large
                                                │
                                                ↓
                                       calendar_embeddings.json
@@ -137,9 +139,9 @@ USER SENDS A MESSAGE
 ┌───────────────────────────────┐
 │ 7. EMBED THE QUERY            │
 │    OpenAI text-embedding-     │
-│    3-small converts the       │
+│    3-large converts the       │
 │    normalized question into   │
-│    a 1536-dimensional vector  │
+│    a 3072-dimensional vector  │
 └──────────────┬────────────────┘
                │
                ▼
@@ -148,8 +150,8 @@ USER SENDS A MESSAGE
 │    Compare query vector       │
 │    against all FAQ question   │
 │    vectors using cosine       │
-│    similarity → get a score   │
-│    between 0.0 and 1.0        │
+│    similarity → return top 3  │
+│    matches with scores        │
 └──────────────┬────────────────┘
                │
         ┌──────┴───────┐
@@ -158,26 +160,55 @@ USER SENDS A MESSAGE
    (good match)   (no match)
         │              │
         ▼              │
-┌──────────────┐       │
-│ 9. DATE-     │       │
-│ SENSITIVE?   │       │
-│              │       │
-│ Does the     │       │
-│ question     │       │
-│ need today's │       │
-│ date to      │       │
-│ answer?      │       │
-│              │       │
-│ Examples:    │       │
-│ "did I miss" │       │
-│ "is it open" │       │
-│ "withdrawal" │       │
-│ "اخر يوم"   │       │
-│ "الحين/لسا" │       │
-└──┬───────┬───┘       │
-   │       │           │
-  NO      YES          │
-   │       └───────────┤
+┌──────────────────┐   │
+│ 9. AMBIGUOUS?    │   │
+│                  │   │
+│ Is the gap       │   │
+│ between #1 and   │   │
+│ #2 match < 5%?   │   │
+│ YES → uncertain, │   │
+│ route to LLM     │   │
+└──┬───────────┬───┘   │
+   │           │       │
+  NO          YES      │
+   │           └───────┤
+   ▼                   │
+┌──────────────────┐   │
+│ 10. DATE-        │   │
+│ SENSITIVE?       │   │
+│                  │   │
+│ Run on normalized│   │
+│ query — catches  │   │
+│ dialect phrases: │   │
+│ "did I miss"     │   │
+│ "is it open"     │   │
+│ "الحين/لسا"     │   │
+│ "الجاي/خلص"     │   │
+└──┬───────────┬───┘   │
+   │           │       │
+  NO          YES      │
+   │           └───────┤
+   ▼                   │
+┌──────────────────┐   │
+│ 11. DOMAIN       │   │
+│ GUARD            │   │
+│                  │   │
+│ Does the question│   │
+│ contain keywords │   │
+│ related to the   │   │
+│ matched FAQ's    │   │
+│ topic?           │   │
+│                  │   │
+│ e.g. midterms    │   │
+│ needs: ميد /     │   │
+│ midterm / نصفي   │   │
+│                  │   │
+│ NO → reject,     │   │
+│ route to LLM     │   │
+└──┬───────────┬───┘   │
+   │           │       │
+  YES          NO      │
+   │           └───────┤
    │                   │
    ▼                   ▼
 ┌──────────────┐  ┌─────────────────────────────────┐
@@ -196,8 +227,21 @@ USER SENDS A MESSAGE
 │ answer_en    │  │ 3. Stream answer token by token  │
 │              │  │    to the UI via SSE             │
 │ Source tag:  │  │                                  │
-│ "FAQ: 84%"   │  │ Source tag: "RAG fallback: 71%"  │
+│ "FAQ: 84%"   │  │ Source: "RAG (domain mismatch)"  │
+│              │  │       / "RAG (ambiguous match)"  │
+│              │  │       / "RAG (date-sensitive)"   │
+│              │  │       / "RAG fallback"            │
 └──────────────┘  └─────────────────────────────────┘
+               │                   │
+               └─────────┬─────────┘
+                         ▼
+              ┌─────────────────────┐
+              │ 12. LOG TO CSV      │
+              │ query_log.csv:      │
+              │ timestamp | question│
+              │ faq_id | score      │
+              │ source | answer     │
+              └─────────────────────┘
 ```
 
 ### Why two paths?
@@ -298,7 +342,7 @@ After slang is already mapped to standard Arabic, [camel-tools](https://github.c
 | متا | متى |
 | الجامعه البحرين | الجامعة البحرين |
 
-This layer is **optional** — if camel-tools is not installed, the server starts normally and falls back to layers 1 and 2 only. A startup message indicates which mode is active.
+This layer is **required** — if camel-tools is not installed the server raises a `RuntimeError` at startup with the exact install command. This prevents silent accuracy degradation from uncorrected typos.
 
 ---
 
@@ -352,8 +396,8 @@ The app detects automatically: if `DATABASE_URL` is set it uses pgvector, otherw
 
 | File | What it does |
 |------|-------------|
-| `api.py` | FastAPI backend — FAQ match, streaming SSE endpoint, RAG fallback, rate limiting |
-| `core.py` | Shared logic — Arabic normalization, date-sensitive routing, LLM calls, follow-up detection |
+| `api.py` | FastAPI backend — top-3 FAQ matching, domain guard, ambiguity check, streaming SSE, RAG fallback, rate limiting, query logging |
+| `core.py` | Shared logic — Arabic normalization, FAQ domain guard, dialect mapping, date-sensitive routing, LLM calls, follow-up detection |
 | `chat.py` | CLI chatbot — same logic as api.py for terminal use |
 | `uob_faq.json` | 36 Q&A entries with 650+ Arabic + English question variants |
 | `uob_calendar.md` | Full academic calendar source document |
@@ -362,6 +406,7 @@ The app detects automatically: if `DATABASE_URL` is set it uses pgvector, otherw
 | `eval_threshold.py` | Evaluates FAQ similarity threshold across test cases |
 | `faq_embeddings.json` | Generated by `embed_faq.py` — gitignored, must generate locally |
 | `calendar_embeddings.json` | Generated by `embed_calendar.py` — gitignored, must generate locally |
+| `query_log.csv` | Auto-generated at runtime — logs every question with matched FAQ, score, source, and answer excerpt for quality review |
 | `db.py` | PostgreSQL connection pool + pgvector query functions |
 | `migrate_to_pgvector.py` | One-time script: loads JSON embeddings → Postgres |
 | `frontend/` | React + Vite web UI |
@@ -384,7 +429,7 @@ Then download the camel-tools Arabic spell model (one-time, ~200 MB):
 camel_data download -i MSA-Spelling-r1
 ```
 
-> This step is optional — the server starts and works without it, falling back to character normalization + dialect dictionary only. A startup message will confirm whether the spell checker loaded successfully.
+> This step is **required** — the server will raise a `RuntimeError` at startup if camel-tools is not installed or the spell model is missing. This ensures Arabic typo correction is always active and failures are never silent.
 
 ### 2. Configure environment
 
@@ -443,16 +488,19 @@ Open `http://localhost:5173`
 ## Tech Stack
 
 ```
-Embeddings:  OpenAI text-embedding-3-small (1536 dimensions)
+Embeddings:  OpenAI text-embedding-3-large (3072 dimensions)
 LLM:         OpenAI gpt-4.1-mini
 Streaming:   Server-Sent Events (SSE) via FastAPI StreamingResponse
 Backend:     FastAPI + uvicorn
 Frontend:    React + Vite
 Matching:    pgvector cosine similarity (PostgreSQL <=> operator)
              Fallback: numpy cosine similarity (local dev)
+FAQ routing: Top-3 candidates + ambiguity gap check + 37-entry domain guard
 RAG:         Top-4 chunk retrieval per query
 Language:    Arabic/Latin character ratio (>50% Arabic → AR)
 Arabic NLP:  3-layer pipeline — character normalization → dialect mapping
-             (70+ Gulf slang entries) → camel-tools MSA spell correction
+             (70+ Gulf slang entries, incl. dropped-hamza variants)
+             → camel-tools MSA spell correction (required)
+Logging:     query_log.csv — every request logged for quality review
 Storage:     PostgreSQL + pgvector (fallback: flat JSON for local dev)
 ```
