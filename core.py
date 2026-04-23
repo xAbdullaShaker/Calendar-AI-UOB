@@ -259,7 +259,7 @@ _spell_checker_loaded = False
 
 
 def _load_spell_checker():
-    """Lazy-load camel-tools SpellChecker once. Returns None if not installed."""
+    """Lazy-load camel-tools SpellChecker once. Raises on failure — camel-tools is required."""
     global _spell_checker, _spell_checker_loaded
     if _spell_checker_loaded:
         return _spell_checker
@@ -268,9 +268,15 @@ def _load_spell_checker():
         from camel_tools.spell import SpellChecker
         _spell_checker = SpellChecker.pretrained()
         print("[camel-tools] Arabic spell checker loaded.")
+    except ImportError:
+        raise RuntimeError(
+            "[camel-tools] Package not installed. Run: pip install camel-tools"
+        )
     except Exception as e:
-        print(f"[camel-tools] Spell checker unavailable — using basic normalization. ({e})")
-        _spell_checker = None
+        raise RuntimeError(
+            f"[camel-tools] Spell checker failed to load: {e}\n"
+            "Run: python -c \"from camel_tools.spell import SpellChecker; SpellChecker.pretrained()\""
+        )
     return _spell_checker
 
 
