@@ -148,9 +148,9 @@ USER SENDS A MESSAGE
 │      "الامتحانات"             │
 │    "تسيجل" → "تسجيل"         │
 │    "متا" → "متى"              │
-│    Required — server raises   │
-│    RuntimeError at startup    │
-│    if camel-tools not found   │
+│    Optional — skipped with    │
+│    a warning if camel-tools   │
+│    is not installed           │
 └──────────────┬────────────────┘
                │
                ▼
@@ -172,94 +172,72 @@ USER SENDS A MESSAGE
 │    matches with scores        │
 └──────────────┬────────────────┘
                │
-        ┌──────┴───────┐
-        │              │
-   score ≥ 0.70    score < 0.70
-   (good match)   (no match)
-        │              │
-        ▼              │
-┌──────────────────┐   │
-│ 10. AMBIGUOUS?   │   │
-│                  │   │
-│ Is the gap       │   │
-│ between #1 and   │   │
-│ #2 match < 5%?   │   │
-│ YES → uncertain, │   │
-│ route to LLM     │   │
-└──┬───────────┬───┘   │
-   │           │       │
-  NO          YES      │
-   │           └───────┤
-   ▼                   │
-┌──────────────────┐   │
-│ 11. DATE-        │   │
-│ SENSITIVE?       │   │
-│                  │   │
-│ Run on normalized│   │
-│ query — catches  │   │
-│ dialect phrases: │   │
-│ "did I miss"     │   │
-│ "is it open"     │   │
-│ "الحين/لسا"     │   │
-│ "الجاي/خلص"     │   │
-└──┬───────────┬───┘   │
-   │           │       │
-  NO          YES      │
-   │           └───────┤
-   ▼                   │
-┌──────────────────┐   │
-│ 12. DOMAIN       │   │
-│ GUARD            │   │
-│                  │   │
-│ Does the question│   │
-│ contain keywords │   │
-│ related to the   │   │
-│ matched FAQ's    │   │
-│ topic?           │   │
-│                  │   │
-│ e.g. midterms    │   │
-│ needs: ميد /     │   │
-│ midterm / نصفي   │   │
-│                  │   │
-│ NO → reject,     │   │
-│ route to LLM     │   │
-└──┬───────────┬───┘   │
-   │           │       │
-  YES          NO      │
-   │           └───────┤
-   │                   │
-   ▼                   ▼
-┌──────────────┐  ┌─────────────────────────────────┐
-│ FAQ ANSWER   │  │ LLM ANSWER (gpt-4.1-mini)        │
-│              │  │                                  │
-│ Return the   │  │ 1. Find top 4 most relevant      │
-│ pre-written  │  │    calendar chunks by vector     │
-│ answer from  │  │    similarity                    │
-│ uob_faq.json │  │                                  │
-│ instantly —  │  │ 2. Send to LLM with:             │
-│ no LLM call  │  │    · Today's date & semester     │
-│              │  │    · Those 4 calendar chunks     │
-│ Arabic   →   │  │    · Last 10 conversation turns  │
-│ answer_ar    │  │    · Language instruction        │
-│ English  →   │  │                                  │
-│ answer_en    │  │ 3. Stream answer token by token  │
-│              │  │    to the UI via SSE             │
-│ Source tag:  │  │                                  │
-│ "FAQ: 84%"   │  │ Source: "RAG (domain mismatch)"  │
-│              │  │       / "RAG (ambiguous match)"  │
-│              │  │       / "RAG (date-sensitive)"   │
-│              │  │       / "RAG fallback"            │
-└──────────────┘  └─────────────────────────────────┘
-               │                   │
-               └─────────┬─────────┘
-                         ▼
-              ┌─────────────────────┐
-              │ 13. LOG TO CSV      │
-              │ query_log.csv:      │
-              │ timestamp | question│
-              │ faq_id | score      │
-              │ source | answer     │
-              └─────────────────────┘
+     ┌─────────┴─────────┐
+     │ score ≥ 0.70       │ score < 0.70
+     │ (potential match)  └──────────────────────────→ LLM (no FAQ match)
+     ▼                                                         │
+┌──────────────────────────────┐                              │
+│ 10. AMBIGUITY CHECK          │                              │
+│     Are the top two scores   │── gap < 5% (uncertain) ─────→┤
+│     within 5% of each other? │                              │
+│     If yes, the match is     │                              │
+│     too close to trust       │                              │
+└──────────────┬───────────────┘                              │
+               │ gap ≥ 5% (clear winner)                      │
+               ▼                                              │
+┌──────────────────────────────┐                              │
+│ 11. DATE-SENSITIVE CHECK     │                              │
+│     Does the query contain   │── YES ──────────────────────→┤
+│     time-relative language?  │   (static FAQ answer         │
+│     "did I miss", "is it     │    would be outdated)        │
+│     still open", "الحين",    │                              │
+│     "لسا", "الجاي", "خلص"   │                              │
+└──────────────┬───────────────┘                              │
+               │ NO (answer is timeless)                      │
+               ▼                                              │
+┌──────────────────────────────┐                              │
+│ 12. DOMAIN GUARD             │                              │
+│     Do the question's        │── NO ───────────────────────→┤
+│     keywords actually match  │   (high score, wrong topic)  │
+│     the FAQ entry's topic?   │                              │
+│                              │                              │
+│     e.g. "midterms" FAQ      │                              │
+│     requires: ميد / midterm  │                              │
+│     / نصفي in the question   │                              │
+└──────────────┬───────────────┘                              │
+               │ YES (topic confirmed)                        │
+               ▼                                              ▼
+┌─────────────────────────┐       ┌──────────────────────────────────┐
+│ FAQ ANSWER              │       │ LLM ANSWER (gpt-4.1-mini)        │
+│                         │       │                                  │
+│ Return the pre-written  │       │ 1. Find top 4 most relevant      │
+│ answer from             │       │    calendar chunks by vector     │
+│ uob_faq.json instantly  │       │    similarity                    │
+│ — no LLM call           │       │                                  │
+│                         │       │ 2. Send to LLM with:             │
+│ Arabic  →  answer_ar    │       │    · Today's date & semester     │
+│ English →  answer_en    │       │    · Those 4 calendar chunks     │
+│                         │       │    · Last 10 conversation turns  │
+│ Source tag: "FAQ: 84%"  │       │    · Language instruction        │
+│                         │       │                                  │
+│                         │       │ 3. Stream answer token by token  │
+│                         │       │    to the UI via SSE             │
+│                         │       │                                  │
+│                         │       │ Source: "RAG (no FAQ match)"     │
+│                         │       │       / "RAG (ambiguous)"        │
+│                         │       │       / "RAG (date-sensitive)"   │
+│                         │       │       / "RAG (domain mismatch)"  │
+└────────────┬────────────┘       └───────────────┬──────────────────┘
+             │                                    │
+             └──────────────────┬─────────────────┘
+                                ▼
+                   ┌────────────────────────┐
+                   │ 13. LOG TO CSV         │
+                   │ query_log.csv:         │
+                   │ timestamp | question   │
+                   │ faq_id | score         │
+                   │ source | answer        │
+                   └────────────────────────┘
 ```
 
 ### Why two paths?
