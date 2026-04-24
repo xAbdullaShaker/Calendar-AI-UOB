@@ -350,8 +350,9 @@ async def chat_stream(req: ChatRequest):
             domain_ok = faq_domain_matches(clean, best_entry["id"]) if best_entry else False
 
             print(
-                f"[FAQ] best={best_entry}, score={score:.0%}, second={second_score:.0%}, "
-                f"ambiguous={ambiguous}, date_sensitive={date_sensitive}, domain_ok={domain_ok}"
+                f"[FAQ] best={best_entry['id'] if best_entry else None}, score={score:.0%}, "
+                f"second={second_score:.0%}, ambiguous={ambiguous}, "
+                f"date_sensitive={date_sensitive}, domain_ok={domain_ok}"
             )
 
             if (score >= SIMILARITY_THRESHOLD   # score is high enough
