@@ -61,6 +61,29 @@ def find_best_faq_match_db(embedding: list) -> tuple[str, float]:
     return (None, 0.0)
 
 
+def find_top_faq_matches_db(embedding: list, k: int = 3) -> list[tuple[str, float]]:
+    """
+    Search the FAQ vectors in Supabase and return the top-k matches.
+
+    Used by find_top_faq_matches() in core.py so the ambiguity check
+    (score gap between #1 and #2) works in pgvector mode, not just numpy mode.
+
+    Returns [(faq_id, score), ...] sorted best-first.
+    Returns [] if the search fails.
+    """
+    try:
+        result = _get_client().rpc("match_faq", {
+            "query_embedding": embedding,
+            "match_threshold": 0.0,
+            "match_count": k,
+        }).execute()
+        if result.data:
+            return [(row["faq_id"], float(row["similarity"])) for row in result.data]
+    except Exception as e:
+        print(f"[DB find_top_faq_matches_db ERROR] {e}")
+    return []
+
+
 def retrieve_top_chunks_db(embedding: list, top_k: int = 4) -> list[str]:
     """
     Search the calendar chunk vectors in Supabase and return the top_k most relevant chunks.

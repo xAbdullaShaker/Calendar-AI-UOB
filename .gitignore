@@ -6,3 +6,4 @@ __pycache__/
 .venv/
 venv/
 *.log
+query_log.csv

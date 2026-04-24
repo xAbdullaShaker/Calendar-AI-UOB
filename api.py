@@ -21,6 +21,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 # Import all shared logic from core.py
+import core as _core
 from core import (
     client,
     USE_DB,
@@ -152,15 +153,18 @@ def _validate_db() -> bool:
                 "tables and updating the SQL RPC functions to use vector(3072)."
             )
         else:
-            print(f"[STARTUP] DB health check failed: {e}. Falling back to numpy.")
+            print(
+                f"\n[STARTUP] WARNING: Unexpected DB error — {e}\n"
+                "[STARTUP] This may be a connection failure, wrong API key, or network "
+                "issue — NOT a dimension mismatch. Falling back to numpy, but this "
+                "should be investigated. Check SUPABASE_URL and SUPABASE_KEY in .env.\n"
+            )
         return False
 
 
 # Load embeddings into memory or use database depending on environment.
 # If the DB health check fails (e.g. vector dimension mismatch from a stale migration),
 # override core.USE_DB so all retrieval functions fall back to numpy automatically.
-import core as _core
-
 if USE_DB:
     if _validate_db():
         # pgvector mode — embeddings stay in PostgreSQL, no local files needed
@@ -277,11 +281,22 @@ def chat_stream(req: ChatRequest):
         raise HTTPException(status_code=400, detail=warning)
 
     # ── Step 2.5: Short-circuit greetings before the embedding pipeline ─────────
+    # Treat as greeting if the first word is a greeting word and the message is
+    # short (≤3 words). This catches "hi", "hello there", "مرحبا أهلاً", etc.
+    # without catching "hello when is finals?" (4+ words with real intent).
     arabic = is_arabic(clean)
-    normalized_clean = clean.strip().lower()
-    if normalized_clean in GREETINGS:
+    greeting_words = clean.strip().lower().split()
+    is_greeting = bool(greeting_words) and greeting_words[0] in GREETINGS and len(greeting_words) <= 3
+    if is_greeting:
         greeting_entry = {"id": "greeting"}
         result = build_faq_response(greeting_entry, arabic, 1.0, faq_answers)
+
+        # Save greeting turn to session history so follow-ups have context
+        hist = sessions.get(req.session_id, [])
+        hist.append({"question": clean, "answer": result["response"]})
+        if len(hist) > MAX_HISTORY:
+            hist.pop(0)
+        sessions[req.session_id] = hist
 
         def greeting_stream():
             yield f"data: {json.dumps({'type': 'token', 'text': result['response']})}\n\n"

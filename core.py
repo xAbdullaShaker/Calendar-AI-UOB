@@ -55,7 +55,6 @@ MAX_HISTORY = 10
 # FAQ entries without a guard entry are always allowed through (no restriction).
 #
 FAQ_DOMAIN_GUARD: dict[str, list[str]] = {
-    "greeting":                 ["hi", "hello", "hey", "سلام", "مرحب", "هاي", "هلا", "أهلاً", "اهلا"],
     "midterms":                 ["ميد", "midterm", "نصفي", "منتصف"],
     "fall_finals":              ["نهائي", "فاينل", "final", "امتحان", "اختبار", "exam"],
     "spring_finals":            ["نهائي", "فاينل", "final", "امتحان", "اختبار", "exam"],
@@ -88,7 +87,7 @@ FAQ_DOMAIN_GUARD: dict[str, list[str]] = {
     "transfer_period":          ["تحويل", "transfer"],
     "admission_tests":          ["قبول", "admission", "اختبار قبول", "interview"],
     "academic_advising":        ["إرشاد", "ارشاد", "advising", "advisor"],
-    "preliminary_registration": ["تسجيل مبدئي", "preliminary", "بريلم", "prelim", "تسجيل"],
+    "preliminary_registration": ["تسجيل مبدئي", "preliminary", "بريلم", "prelim", "تسجيل", "registration"],
     "english_test_grad":        ["إنجليزي", "انجليزي", "english", "ielts", "toefl", "دراسات عليا"],
     "faculty_report":           ["هيئة التدريس", "faculty", "أستاذ", "استاذ"],
     "tuition_fees":             ["رسوم", "tuition", "fees", "مالي", "دفع"],
@@ -167,7 +166,7 @@ DATE_SENSITIVE_PATTERNS = (
     "باقي كم", "بعد كم", "كم باقي", "كم بقي", "متبقي كم",
     "إلى امتى", "من امتى", "بعد قد إيش",
     # "did I miss / will I miss"
-    "فاتني", "فات علي", "راح يفوت", "بيفوت", "ما فاتني",
+    "فاتني", "طافني", "طاف علي", "فات علي", "راح يفوت", "بيفوت", "ما فاتني",
     "خلص", "مو خلص", "ما خلص", "هل خلص", "هل انتهى الـ",
     # "I want to know if it's open/closed"
     "ودي أعرف إذا", "أبي أعرف إذا", "أقدر أعرف إذا",
@@ -387,7 +386,8 @@ _spell_checker_loaded = False  # flag to avoid trying to load it more than once
 def _load_spell_checker():
     """
     Load the camel-tools SpellChecker on first call and cache it.
-    Raises a RuntimeError if camel-tools is not installed — it is a required dependency.
+    If camel-tools is not installed or fails to load, logs a warning and returns None.
+    Spell correction is disabled for the rest of the session in that case.
     """
     global _spell_checker, _spell_checker_loaded
     # Only attempt to load once per process — return cached result on subsequent calls
@@ -597,6 +597,10 @@ DIALECT_NORMALIZATIONS = [
     ("اخر يوم",              "آخر موعد"),
     ("اخر وقت",              "آخر موعد"),
     ("اخر موعد",             "آخر موعد"),   # normalize alef
+
+    # ── "Did I miss" — Gulf/Khaleeji dialect ────────────────────────────────
+    ("طافني",                "فاتني"),
+    ("طاف علي",              "فات علي"),
 
     # ── "When" — Gulf/Khaleeji dialect ──────────────────────────────────────
     ("وقت ايش",              "متى"),
@@ -940,10 +944,10 @@ def find_top_faq_matches(question_embedding, faq_embeddings=None, k=3):
     doesn't currently support top-k. The ambiguity check is skipped in that case.
     """
     if USE_DB:
-        # DB path: return single best match wrapped in a list
-        from db import find_best_faq_match_db
-        faq_id, score = find_best_faq_match_db(question_embedding)
-        return [({"id": faq_id}, score)]
+        # DB path: fetch top-k so the ambiguity check works the same as numpy mode
+        from db import find_top_faq_matches_db
+        matches = find_top_faq_matches_db(question_embedding, k)
+        return [({"id": faq_id}, score) for faq_id, score in matches]
 
     # numpy path: score every FAQ entry and return the top-k
     scored = []
