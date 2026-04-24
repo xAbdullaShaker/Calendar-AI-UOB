@@ -19,17 +19,13 @@ import re
 from datetime import date
 import numpy as np
 from dotenv import load_dotenv
-from openai import OpenAI, AsyncOpenAI
+from openai import OpenAI
 
 # Load environment variables from .env (OPENAI_API_KEY, SUPABASE_URL, etc.)
 load_dotenv()
 
-# Sync client — used by chat.py (CLI) and embed scripts
+# Initialize the OpenAI client — used for both embeddings and LLM calls
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# Async client — used by api.py so streaming runs on the event loop and
-# can be cancelled cleanly when uvicorn shuts down or reloads
-async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # If SUPABASE_URL is set, use pgvector DB for vector search instead of numpy
 USE_DB = bool(os.getenv("SUPABASE_URL"))
@@ -59,6 +55,7 @@ MAX_HISTORY = 10
 # FAQ entries without a guard entry are always allowed through (no restriction).
 #
 FAQ_DOMAIN_GUARD: dict[str, list[str]] = {
+    "greeting":                 ["hi", "hello", "hey", "سلام", "مرحب", "هاي", "هلا", "أهلاً", "اهلا"],
     "midterms":                 ["ميد", "midterm", "نصفي", "منتصف"],
     "fall_finals":              ["نهائي", "فاينل", "final", "امتحان", "اختبار", "exam"],
     "spring_finals":            ["نهائي", "فاينل", "final", "امتحان", "اختبار", "exam"],
@@ -91,7 +88,7 @@ FAQ_DOMAIN_GUARD: dict[str, list[str]] = {
     "transfer_period":          ["تحويل", "transfer"],
     "admission_tests":          ["قبول", "admission", "اختبار قبول", "interview"],
     "academic_advising":        ["إرشاد", "ارشاد", "advising", "advisor"],
-    "preliminary_registration": ["تسجيل مبدئي", "preliminary", "بريلم", "prelim", "تسجيل", "registration"],
+    "preliminary_registration": ["تسجيل مبدئي", "preliminary", "بريلم", "prelim", "تسجيل"],
     "english_test_grad":        ["إنجليزي", "انجليزي", "english", "ielts", "toefl", "دراسات عليا"],
     "faculty_report":           ["هيئة التدريس", "faculty", "أستاذ", "استاذ"],
     "tuition_fees":             ["رسوم", "tuition", "fees", "مالي", "دفع"],
@@ -170,7 +167,7 @@ DATE_SENSITIVE_PATTERNS = (
     "باقي كم", "بعد كم", "كم باقي", "كم بقي", "متبقي كم",
     "إلى امتى", "من امتى", "بعد قد إيش",
     # "did I miss / will I miss"
-    "فاتني", "طافني", "طاف علي", "فات علي", "راح يفوت", "بيفوت", "ما فاتني",
+    "فاتني", "فات علي", "راح يفوت", "بيفوت", "ما فاتني",
     "خلص", "مو خلص", "ما خلص", "هل خلص", "هل انتهى الـ",
     # "I want to know if it's open/closed"
     "ودي أعرف إذا", "أبي أعرف إذا", "أقدر أعرف إذا",
@@ -390,8 +387,7 @@ _spell_checker_loaded = False  # flag to avoid trying to load it more than once
 def _load_spell_checker():
     """
     Load the camel-tools SpellChecker on first call and cache it.
-    If camel-tools is not installed or fails to load, logs a warning and returns None.
-    Spell correction is disabled for the rest of the session in that case.
+    Raises a RuntimeError if camel-tools is not installed — it is a required dependency.
     """
     global _spell_checker, _spell_checker_loaded
     # Only attempt to load once per process — return cached result on subsequent calls
@@ -601,10 +597,6 @@ DIALECT_NORMALIZATIONS = [
     ("اخر يوم",              "آخر موعد"),
     ("اخر وقت",              "آخر موعد"),
     ("اخر موعد",             "آخر موعد"),   # normalize alef
-
-    # ── "Did I miss" — Gulf/Khaleeji dialect ────────────────────────────────
-    ("طافني",                "فاتني"),
-    ("طاف علي",              "فات علي"),
 
     # ── "When" — Gulf/Khaleeji dialect ──────────────────────────────────────
     ("وقت ايش",              "متى"),
@@ -948,10 +940,10 @@ def find_top_faq_matches(question_embedding, faq_embeddings=None, k=3):
     doesn't currently support top-k. The ambiguity check is skipped in that case.
     """
     if USE_DB:
-        # DB path: fetch top-k so the ambiguity check works the same as numpy mode
-        from db import find_top_faq_matches_db
-        matches = find_top_faq_matches_db(question_embedding, k)
-        return [({"id": faq_id}, score) for faq_id, score in matches]
+        # DB path: return single best match wrapped in a list
+        from db import find_best_faq_match_db
+        faq_id, score = find_best_faq_match_db(question_embedding)
+        return [({"id": faq_id}, score)]
 
     # numpy path: score every FAQ entry and return the top-k
     scored = []
@@ -1116,41 +1108,5 @@ def ask_llm_stream(question, context_chunks, history, arabic=False):
                 yield token
     except Exception:
         # If the stream fails, yield an error message as a single token
-        err = "عذراً، حدث خطأ في الاتصال. حاول مرة أخرى." if arabic else "Sorry, the AI service is unavailable. Please try again."
-        yield err
-
-
-async def ask_llm_stream_async(question, context_chunks, history, arabic=False):
-    """
-    Async version of ask_llm_stream — used by api.py (web server).
-
-    Runs on the asyncio event loop instead of a thread pool, so uvicorn can
-    cancel it immediately on shutdown or --reload without hanging.
-    Identical behaviour to ask_llm_stream; only the I/O is async.
-
-    Yields strings (individual tokens or word fragments).
-    """
-    context = "\n".join(f"- {chunk}" for chunk in context_chunks)
-    system = STREAMING_SYSTEM_PROMPT.format(context=context)
-
-    lang_instruction = "[IMPORTANT: Respond in Arabic only.]\n" if arabic else "[IMPORTANT: Respond in English only. Do not use Arabic.]\n"
-
-    messages = [{"role": "system", "content": system}]
-    for turn in history:
-        messages.append({"role": "user", "content": turn["question"]})
-        messages.append({"role": "assistant", "content": turn["answer"]})
-    messages.append({"role": "user", "content": lang_instruction + get_date_context() + "User question: " + question})
-
-    try:
-        stream = await async_client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=messages,
-            stream=True,
-        )
-        async for chunk in stream:
-            token = chunk.choices[0].delta.content
-            if token:
-                yield token
-    except Exception:
         err = "عذراً، حدث خطأ في الاتصال. حاول مرة أخرى." if arabic else "Sorry, the AI service is unavailable. Please try again."
         yield err
