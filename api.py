@@ -216,15 +216,13 @@ class ChatResponse(BaseModel):
 EMBED_MODEL = "text-embedding-3-large"
 
 
-async def get_embed(text: str):
+def get_embed(text: str):
     """
     Convert a text string into an embedding vector using OpenAI.
-    Async so it runs on the event loop and doesn't block uvicorn shutdown.
     Returns the vector (list of floats) or None if the API call fails.
     """
-    from core import async_client as _async_client
     try:
-        resp = await _async_client.embeddings.create(input=[text], model=EMBED_MODEL)
+        resp = client.embeddings.create(input=[text], model=EMBED_MODEL)
         return resp.data[0].embedding
     except Exception as e:
         print(f"[get_embed ERROR] {e}")
@@ -258,7 +256,7 @@ def log_query(question: str, faq_id: str, score: float, source: str, answer: str
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @app.post("/chat/stream")
-async def chat_stream(req: ChatRequest):
+def chat_stream(req: ChatRequest):
     """
     Main chat endpoint — handles one user message and streams the answer back.
 
@@ -324,7 +322,7 @@ async def chat_stream(req: ChatRequest):
     embed_query = build_embed_query(clean, history)
 
     # ── Step 4: Embed the normalized query ────────────────────────────────────
-    question_embedding = await get_embed(embed_query)
+    question_embedding = get_embed(embed_query)
     if question_embedding is None:
         raise HTTPException(status_code=503, detail="AI service unavailable. Please try again.")
 
@@ -336,13 +334,11 @@ async def chat_stream(req: ChatRequest):
     # Ambiguity check: if top two scores are very close, we're not confident enough
     ambiguous = (score - second_score) < AMBIGUITY_GAP
 
-    async def generate():
+    def generate():
         """
-        Async generator that yields SSE events.
+        Generator function that yields SSE events.
         Each 'token' event carries a piece of the answer text.
         The final 'done' event carries the source label and any warning.
-        Running async means uvicorn can cancel this on shutdown/reload
-        without waiting for an in-progress OpenAI stream to finish.
         """
         answer_text = ""
         source = f"RAG fallback — {score:.0%}"  # default; overwritten below if FAQ is used
@@ -390,7 +386,7 @@ async def chat_stream(req: ChatRequest):
                 print(f"[RAG] chunks={len(top_chunks)}, source={source}")
 
                 # Stream the LLM answer token by token to the frontend
-                async for token in ask_llm_stream_async(clean, top_chunks, history, arabic=arabic):
+                for token in ask_llm_stream(clean, top_chunks, history, arabic=arabic):
                     answer_text += token
                     yield f"data: {json.dumps({'type': 'token', 'text': token})}\n\n"
 
