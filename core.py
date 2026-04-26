@@ -1080,21 +1080,22 @@ def ask_llm_stream(question, context_chunks, history, arabic=False):
 
     Yields strings (individual tokens or word fragments).
     """
-    # Format calendar chunks as a bullet list for the system prompt
-    context = "\n".join(f"- {chunk}" for chunk in context_chunks)
-    system = STREAMING_SYSTEM_PROMPT.format(context=context)
-
-    # Explicit language instruction — the LLM must match the user's language
-    lang_instruction = "[IMPORTANT: Respond in Arabic only.]\n" if arabic else "[IMPORTANT: Respond in English only. Do not use Arabic.]\n"
-
-    # Build the message list: system prompt + conversation history + current question
-    messages = [{"role": "system", "content": system}]
-    for turn in history:
-        messages.append({"role": "user", "content": turn["question"]})
-        messages.append({"role": "assistant", "content": turn["answer"]})
-    messages.append({"role": "user", "content": lang_instruction + get_date_context() + "User question: " + question})
-
+    err = "عذراً، حدث خطأ في الاتصال. حاول مرة أخرى." if arabic else "Sorry, the AI service is unavailable. Please try again."
     try:
+        # Format calendar chunks as a bullet list for the system prompt
+        context = "\n".join(f"- {chunk}" for chunk in context_chunks)
+        system = STREAMING_SYSTEM_PROMPT.format(context=context)
+
+        # Explicit language instruction — the LLM must match the user's language
+        lang_instruction = "[IMPORTANT: Respond in Arabic only.]\n" if arabic else "[IMPORTANT: Respond in English only. Do not use Arabic.]\n"
+
+        # Build the message list: system prompt + conversation history + current question
+        messages = [{"role": "system", "content": system}]
+        for turn in history:
+            messages.append({"role": "user", "content": turn["question"]})
+            messages.append({"role": "assistant", "content": turn["answer"]})
+        messages.append({"role": "user", "content": lang_instruction + get_date_context() + "User question: " + question})
+
         # stream=True tells OpenAI to send tokens incrementally
         stream = client.chat.completions.create(
             model="gpt-4.1-mini",
@@ -1106,7 +1107,7 @@ def ask_llm_stream(question, context_chunks, history, arabic=False):
             token = chunk.choices[0].delta.content
             if token:
                 yield token
-    except Exception:
-        # If the stream fails, yield an error message as a single token
-        err = "عذراً، حدث خطأ في الاتصال. حاول مرة أخرى." if arabic else "Sorry, the AI service is unavailable. Please try again."
+    except Exception as e:
+        # If setup or streaming fails, log and yield a friendly error message
+        print(f"[ask_llm_stream ERROR] {type(e).__name__}: {e}")
         yield err

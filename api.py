@@ -380,7 +380,9 @@ def chat_stream(req: ChatRequest):
             sessions[req.session_id] = hist
 
         except Exception as e:
-            print(f"[generate ERROR] {e}")
+            import traceback
+            print(f"[generate ERROR] {type(e).__name__}: {e}")
+            print(traceback.format_exc())
             # If something went wrong and no answer was sent yet, send an error message
             if not answer_text:
                 err = "عذراً، حدث خطأ. يرجى المحاولة مجدداً." if arabic else "Something went wrong. Please try again."
